@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Yeni Gönderi Oluştur
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        border-radius: 10px;
+        background-color: #f9f9f9;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-container h2 {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .form-container label {
+        font-weight: 600;
+        color: #555;
+    }
+
+    .form-container button {
+        background-color: #007bff;
+        color: #fff;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+
+    .form-container button:hover {
+        background-color: #0056b3;
+    }
+
+    .form-container .btn-disabled {
+        background-color: #ccc;
+        color: #666;
+        cursor: not-allowed;
+    }
+
+    .post-type-options {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        justify-content: space-around;
+    }
+
+    .post-type-option {
+        text-align: center;
+        padding: 10px;
+        border-radius: 8px;
+        background-color: #f0f0f0;
+        border: 2px solid transparent;
+        transition: transform 0.2s ease, background-color 0.3s ease;
+        cursor: pointer;
+        font-weight: bold;
+        color: #555;
+    }
+
+    .post-type-option:hover {
+        background-color: #007bff;
+        color: #fff;
+        transform: scale(1.05);
+    }
+
+    .post-type-option.disabled {
+        background-color: #ddd;
+        color: #999;
+        cursor: not-allowed;
+    }
+
+    .post-type-option.active {
+        background-color: #007bff;
+        color: #fff;
+        border-color: #0056b3;
+    }
+
+    .alert-info {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+</style>
+
+<div class="form-container">
+    <h2 class="text-center">Yeni Gönderi Oluştur</h2>
+    
+    <!-- Gönderi Türü Seçenekleri -->
+    <div class="post-type-options">
+        <div class="post-type-option active" id="post-type-text" data-type="text">
+            <i class="fas fa-align-left"></i><br>
+            Metin
+        </div>
+        <div class="post-type-option {% if request.user.progress.level < 3 %}disabled{% endif %}" id="post-type-photo" data-type="photo">
+            <i class="fas fa-image"></i><br>
+            Fotoğraf
+        </div>
+        <div class="post-type-option {% if request.user.progress.level < 4 %}disabled{% endif %}" id="post-type-video" data-type="video">
+            <i class="fas fa-video"></i><br>
+            Video
+        </div>
+        <div class="post-type-option {% if request.user.progress.level < 5 %}disabled{% endif %}" id="post-type-gif" data-type="gif">
+            <i class="fas fa-gift"></i><br>
+            GIF
+        </div>
+        <div class="post-type-option {% if request.user.progress.level < 6 %}disabled{% endif %}" id="post-type-poll" data-type="poll">
+            <i class="fas fa-poll"></i><br>
+            Anket
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <!-- Gönderi İçeriği -->
+        <div class="mb-3">
+            <label for="content" class="form-label">Gönderi İçeriği</label>
+            {{ form.content }}
+        </div>
+
+        <!-- Medya Seçimi -->
+        <div class="mb-3" id="media-input">
+            <label for="media" class="form-label">Medya</label>
+            {{ form.media }}
+        </div>
+        
+        <!-- Gönder -->
+        <button type="submit" class="btn btn-primary btn-block">Paylaş</button>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const postTypeOptions = document.querySelectorAll('.post-type-option');
+        const mediaInput = document.getElementById('media-input');
+        
+        postTypeOptions.forEach(option => {
+            option.addEventListener('click', function () {
+                // Seçilemez seçeneklere tıklanırsa
+                if (option.classList.contains('disabled')) {
+                    alert("Bu gönderi türünü kullanmak için yeterli seviyeye ulaşmalısınız.");
+                    return;
+                }
+
+                // Aktif sınıfını kaldır ve seçiliyi ekle
+                postTypeOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+
+                // Gönderi türüne göre medya alanını göster/gizle
+                if (option.dataset.type === 'text') {
+                    mediaInput.style.display = 'none';
+                } else {
+                    mediaInput.style.display = 'block';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

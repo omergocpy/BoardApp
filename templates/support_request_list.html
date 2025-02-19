@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Destek Taleplerim{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Destek Taleplerim</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a href="{% url 'support_request_create' %}" class="btn btn-primary">Yeni Talep Oluştur</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Kategori</th>
+                    <th>Konu</th>
+                    <th>Durum</th>
+                    <th>Oluşturulma Tarihi</th>
+                    <th>Detay</th> 
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in requests %}
+                <tr>
+                    <td>{{ request.get_category_display }}</td>
+                    <td>{{ request.subject }}</td>
+                    <td>{{ request.get_status_display }}</td>
+                    <td>{{ request.created_at|date:"d M Y H:i" }}</td>
+                    <td>
+                        <a href="{% url 'support_request_detail' request.pk %}" class="btn btn-info">Detay</a> <!-- Link to details -->
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+</div>
+{% endblock %}

@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}
+    {{ post.user.username }}'nin Gönderisi
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Rating container: DOM sırasını ters çeviriyoruz */
+    .rating {
+        display: flex;
+        flex-direction: row-reverse; /* DOM sırasını ters çevirir, görselde solda 1, sağda 5 olur */
+        align-items: center;
+    }
+    .rating input {
+        display: none;
+    }
+    .rating label {
+        font-size: 2rem;
+        color: #ddd; /* Seçilmemiş yıldız rengi */
+        cursor: pointer;
+        transition: transform 0.3s ease, color 0.3s ease;
+        margin-left: 0.5rem; /* Yıldızlar arası boşluk */
+    }
+    /* İkonun rengi label’dan devralsın */
+    .rating label i {
+        color: inherit;
+    }
+    /* Hover efekti: Fare üzerine geldiğinde */
+    .rating label:hover,
+    .rating label:hover ~ label {
+        color: #ffc107;
+        transform: scale(1.2);
+    }
+    /* Seçili durumda: Radio işaretli ise, bu input’dan sonraki label’lar sarı olsun */
+    .rating input:checked ~ label {
+        color: #ffc107;
+        transform: scale(1.2);
+    }
+    
+    /* Diğer stil ayarları */
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    .card-header {
+        padding: 15px 20px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #ddd;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+    .card-body {
+        padding: 20px;
+        line-height: 1.6;
+    }
+    .comment, .reply {
+        background-color: #f8f9fa;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .comment {
+        border-left: 4px solid #ffc107;
+    }
+    .reply {
+        border-left: 4px solid #007bff;
+        margin-left: 20px;
+    }
+    @media (max-width: 768px) {
+        .d-flex {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .rating label {
+            font-size: 1.2rem;
+        }
+        .card-header, .card-body {
+            padding: 15px;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <a href="{% url 'profile_detail' post.user.id %}">
+                <div class="d-flex align-items-center">
+                    <img src="{% static 'images/'|add:post.user.avatar %}" alt="Avatar" class="rounded-circle mr-3" width="50" height="50">
+                    <div>
+                        <h5 class="mb-0">{{ post.user.username }}</h5>
+                        <small class="text-muted">{{ post.created_at|date:"d M Y H:i" }}</small>
+                    </div>
+                </div>
+            </a>
+            <div class="d-flex align-items-center">
+                <form method="post" action="{% url 'like_post' post.id %}" class="d-flex">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary mr-2" name="like_type" value="like">
+                        <i class="fas fa-thumbs-up"></i> ({{ like_count }})
+                    </button>
+                    <button type="submit" class="btn btn-danger" name="like_type" value="dislike">
+                        <i class="fas fa-thumbs-down"></i> ({{ dislike_count }})
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <p>{{ post.content }}</p>
+
+            {% if post.media %}
+            <div class="mt-2 text-center">
+                {% if media_type == 'image' %}
+                    <img src="{{ post.media.url }}" alt="Post Media" class="img-fluid rounded">
+                {% elif media_type == 'video' %}
+                    <video controls class="img-fluid rounded">
+                        <source src="{{ post.media.url }}" type="video/mp4">
+                        Tarayıcınız bu videoyu desteklemiyor.
+                    </video>
+                {% endif %}
+            </div>
+            {% endif %}
+            <!-- Rating Section -->
+            <div class="rating">
+                {# DOM’da ters sıra: "54321". CSS sayesinde görselde solda 1, sağda 5 olacak #}
+                {% for i in "54321" %}
+                    <input 
+                        type="radio" 
+                        name="score" 
+                        id="rating-{{ i }}" 
+                        value="{{ i }}" 
+                        {% if user_rating == i|to_int %}checked{% endif %}>
+                    <label for="rating-{{ i }}" onclick="submitRating({{ i }})">
+                        <i class="fas fa-star"></i>
+                    </label>
+                {% endfor %}
+            </div>
+            <!-- Gizli rating formu -->
+            <form id="rating-form" method="post" action="{% url 'rate_post' post.id %}">
+                {% csrf_token %}
+                <input type="hidden" id="rating-input" name="score" value="">
+            </form>
+            
+        </div>
+    </div>
+
+    <!-- Comments Section -->
+    <div class="card">
+        <div class="card-body">
+            <h6 class="mb-3">Yorumlar:</h6>
+            <div class="comments-section">
+                {% for comment in comments %}
+                    {% if comment.approved %}
+                    <div class="comment">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <img src="{% static 'images/'|add:comment.user.avatar %}" alt="{{ comment.user.username }}'nin Avatarı" class="rounded-circle mr-2" width="35" height="35">
+                                <strong>{{ comment.user.username }}</strong>
+                            </div>
+                        </div>
+                        <p class="mt-2">{{ comment.content }}</p>
+
+                        <!-- Reply Button -->
+                        <button class="btn btn-sm btn-link" data-toggle="collapse" data-target="#replyForm{{ comment.id }}">
+                            <i class="fas fa-reply"></i> Cevap Ver
+                        </button>
+
+                        <!-- Reply Form -->
+                        <div id="replyForm{{ comment.id }}" class="collapse mt-2">
+                            <form method="post" action="{% url 'reply_comment' comment.id %}">
+                                {% csrf_token %}
+                                <textarea class="form-control" name="content" rows="2" placeholder="Yanıt yaz..."></textarea>
+                                <button type="submit" class="btn btn-sm btn-primary mt-2">Gönder</button>
+                            </form>
+                        </div>
+
+                        <!-- Replies -->
+                        <div class="replies mt-4">
+                            {% for reply in comment.replies.all %}
+                                {% if reply.approved %}
+                                <div class="reply">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <img src="{% static 'images/'|add:reply.user.avatar %}" alt="{{ reply.user.username }}'nin Avatarı" class="rounded-circle mr-2" width="35" height="35">
+                                            <strong>{{ reply.user.username }}</strong>
+                                        </div>
+                                    </div>
+                                    <p class="mt-2">{{ reply.content }}</p>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <form method="post" action="{% url 'post_detail' post.id %}" class="mt-4">
+                {% csrf_token %}
+                {{ comment_form.as_p }}
+                <button type="submit" name="comment" class="btn btn-primary">Yorum Yap</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Rated Users Modal -->
+<div class="modal fade" id="ratedUsersModal" tabindex="-1" role="dialog" aria-labelledby="ratedUsersModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ratedUsersModalLabel">Oylama Yapan Kullanıcılar</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Kapat">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group">
+                    {% for rating in rated_users %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ rating.user.username }}
+                            <span class="badge badge-primary badge-pill">{{ rating.score }} Yıldız</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function submitRating(score) {
+        document.getElementById('rating-input').value = score;
+        document.getElementById('rating-form').submit();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+Giriş Yap
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-body text-center">
+            <h5 class="card-title">Giriş Yap</h5>
+            <form method="post">
+                {% csrf_token %}
+                <input type="text" class="form-control mb-3" name="username" id="username" placeholder="Kullanıcı ID" value="{{ username }}" required>
+                <input type="password" class="form-control mb-3" name="password" placeholder="Şifre" required>
+                <div class="form-check mb-3 text-left">
+                    <input type="checkbox" class="form-check-input" name="remember_me" id="remember_me">
+                    <label class="form-check-label" for="remember_me">Beni Hatırla</label>
+                </div>
+                <button class="btn btn-primary btn-block" type="submit">Giriş Yap</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Eğer 'remember_me' seçeneği daha önce seçilmişse, username localStorage'da saklanır.
+        if (localStorage.getItem('rememberMe') === 'true') {
+            document.getElementById('username').value = localStorage.getItem('username');
+            document.getElementById('remember_me').checked = true;
+        }
+
+        document.querySelector('form').addEventListener('submit', function() {
+            if (document.getElementById('remember_me').checked) {
+                localStorage.setItem('rememberMe', 'true');
+                localStorage.setItem('username', document.getElementById('username').value);
+            } else {
+                localStorage.removeItem('rememberMe');
+                localStorage.removeItem('username');
+            }
+        });
+    });
+</script>
+<style>
+    .btn-primary {
+        background-color: #ff8200;
+        border-color: #ff8200;
+    }
+</style>
+{% endblock %}

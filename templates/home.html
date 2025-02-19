@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+Anasayfa
+{% endblock %}
+
+{% block content %}
+<style>
+  .card-animate {
+    border-radius: 10px;
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  }
+
+  .card-animate:hover {
+    transform: scale(1.05);
+    box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .card-icon {
+    font-size: 50px;
+    color: #f57c00;
+    margin-bottom: 15px;
+  }
+
+  .container {
+    max-width: 1200px;
+  }
+
+  .btn-primary {
+    background-color: #f57c00;
+    border: none;
+    transition: background-color 0.3s ease-in-out;
+  }
+
+  .btn-primary:hover {
+    background-color: #e65100;
+  }
+</style>
+
+<div class="container mt-4">
+  <div class="row">
+    <!-- Hesabım Kartı -->
+    <div class="col-md-4 mb-4">
+      <div class="card card-animate h-100 text-center">
+        <div class="card-body">
+          <i class="fas fa-user card-icon"></i>
+          <h5 class="card-title">Hesabım</h5>
+          <p class="card-text">
+            Profil bilgilerinizi ve ayarlarınızı buradan yönetebilirsiniz.
+          </p>
+          <a href="#" class="btn btn-primary">Detaylar</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Çark Kartı -->
+    <div class="col-md-4 mb-4">
+      <div class="card card-animate h-100 text-center">
+        <div class="card-body">
+          <i class="fas fa-sync-alt card-icon"></i>
+          <h5 class="card-title">Çark</h5>
+          <p class="card-text">Çarkı çevirerek bonus puanlar kazanın.</p>
+          <a href="#" class="btn btn-primary">Çarkı Çevir</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gönderiler Kartı -->
+    <div class="col-md-4 mb-4">
+      <div class="card card-animate h-100 text-center">
+        <div class="card-body">
+          <i class="fas fa-paper-plane card-icon"></i>
+          <h5 class="card-title">Gönderiler</h5>
+          <p class="card-text">
+            Topluluk gönderilerini görüntüleyin ve paylaşım yapın.
+          </p>
+          <a href="#" class="btn btn-primary">Gönderilere Git</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grup Detayları Kartı -->
+    <div class="col-md-4 mb-4">
+      <div class="card card-animate h-100 text-center">
+        <div class="card-body">
+          <i class="fas fa-users card-icon"></i>
+          <h5 class="card-title">Grup Detayları</h5>
+          <p class="card-text">Grup üyelerini ve etkinlikleri görüntüleyin.</p>
+          <a href="#" class="btn btn-primary">Grup Bilgileri</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skor Tablosu Kartı -->
+    <div class="col-md-4 mb-4">
+      <div class="card card-animate h-100 text-center">
+        <div class="card-body">
+          <i class="fas fa-trophy card-icon"></i>
+          <h5 class="card-title">Skor Tablosu</h5>
+          <p class="card-text">En yüksek puanlı kullanıcıları görüntüleyin.</p>
+          <a href="#" class="btn btn-primary">Tabloya Git</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Destek Talepleri Kartı -->
+    <div class="col-md-4 mb-4">
+      <div class="card card-animate h-100 text-center">
+        <div class="card-body">
+          <i class="fas fa-life-ring card-icon"></i>
+          <h5 class="card-title">Destek Talepleri</h5>
+          <p class="card-text">Destek taleplerinizi burada yönetebilirsiniz.</p>
+          <a href="#" class="btn btn-primary">Talepleri Görüntüle</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

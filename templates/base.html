@@ -1,0 +1,222 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Board App{% endblock %}</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        body {
+            background-color: #f0f0f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-bottom: 80px; /* Footer alanı kadar boşluk bırakıyoruz */
+            color: #333;
+        }
+        
+        /* Modern Turuncu Renk ve Navbar */
+        .navbar {
+            background-color: #ff6700; /* 2024 özel mat turuncu */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        .navbar:hover {
+            background-color: #e65c00; /* Biraz daha koyu turuncu */
+        }
+
+        .navbar-brand {
+            color: white;
+            font-weight: bold;
+            font-size: 1.6rem;
+        }
+
+        .navbar-brand img {
+            max-height: 30px;
+            margin-right: 10px;
+        }
+
+        .navbar-nav .nav-link {
+            color: white !important;
+            font-size: 1rem;
+            padding: 10px 15px;
+            transition: color 0.3s ease-in-out;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #ffd9b3 !important; /* Hover durumunda daha hafif bir ton */
+        }
+
+        /* Footer ve İkonlar */
+        .footer {
+            background-color: #ff6700;
+            color: white;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+            z-index: 1000;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        .footer:hover {
+            background-color: #e65c00;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .footer a:hover {
+            color: #ffd9b3;
+            transform: scale(1.15); /* Hover ile büyüme efekti */
+        }
+
+        .footer a .fa {
+            font-size: 24px; /* İkonlar biraz daha büyük ve canlı */
+            margin-bottom: 5px;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .footer a:hover .fa {
+            transform: rotate(360deg); /* İkona döndürme efekti ekliyoruz */
+        }
+
+        /* Dropdown Menü Renkleri */
+        .dropdown-menu {
+            background-color: #e65c00; 
+            color: white;
+        }
+
+        .dropdown-menu a {
+            color: white;
+            padding: 10px 20px;
+        }
+
+        .dropdown-menu a:hover {
+            background-color: #ffd9b3;
+            color: #333;
+        }
+
+        /* Responsive Tasarım ve Mobil Uyumu */
+        @media (max-width: 768px) {
+            .footer {
+                padding: 10px 0;
+            }
+
+            .footer a {
+                font-size: 12px;
+            }
+
+            .footer a .fa {
+                font-size: 20px;
+            }
+
+            .navbar-brand {
+                font-size: 1.4rem;
+            }
+
+            .navbar-nav .nav-link {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <a class="navbar-brand" href="/">
+            <!-- <img src="{% static 'logo.png' %}" alt="Logo" style="max-height: 30px;">--> <b style="color:white">Board</b> 
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#mobileNavbar" aria-controls="mobileNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mobileNavbar">
+            <ul class="navbar-nav ml-auto">
+                {% if not request.user.is_authenticated %}
+                    <!-- Kullanıcı Giriş Yapmamışsa -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">Kayıt Ol</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Giriş Yap</a>
+                    </li>
+                {% else %}
+                    <!-- Kullanıcı Giriş Yapmışsa -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-user"></i> {{ request.user.username }}
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                            <a class="dropdown-item" href="/profil">Profil</a>
+                            <a class="dropdown-item" href="/logout">Çıkış Yap</a>
+                            {% if is_admin %}
+                            <a class="dropdown-item" href="/admin">Admin Panel</a>
+                            {% endif %}
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link">
+                            <i class="fas fa-trophy"></i> Seviye: {{ level }} | Puan: {{ points }}
+                        </span>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <div class="container mt-1 mb-5">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    {% if request.user.is_authenticated %}
+    <div class="footer">
+        <a href="/" class="footer-link">
+            <i class="fas fa-home"></i>
+            <span>Anasayfa</span>
+        </a>
+        <div class="dropdown">
+            <a href="#" class="footer-link dropdown-toggle" id="footerProfileDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-user"></i>
+                <span>Hesabım</span>
+            </a>
+            <div class="dropdown-menu" aria-labelledby="footerProfileDropdown">
+                <a class="dropdown-item" href="/profil">Profil</a>
+                <a class="dropdown-item" href="{% url 'logout' %}">Çıkış Yap</a>
+            </div>
+        </div>
+        <a href="/create" class="footer-link">
+            <i class="fas fa-plus-circle"></i>
+            <span>Paylaş</span>
+        </a>
+        <a href="/support/yeni-destek-talebi/" class="footer-link">
+            <i class="fas fa-life-ring"></i>
+            <span>Destek</span>
+        </a>
+    </div>
+    {% endif %}
+
+<!-- jQuery (Tam Sürüm) -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- Popper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+
+<!-- Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

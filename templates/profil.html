@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+Profil
+{% endblock%}
+
+{% block content %}
+<style>
+  .progress {
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    height: 25px;
+  }
+
+  .progress-bar {
+    background-color: #ff6700; /* Modern turuncu renk */
+    transition: width 0.6s ease; /* Yavaşça genişlemesi için animasyon */
+  }
+
+  .text-muted {
+    color: #bdbdbd;
+  }
+
+  .text-success {
+    color: #4caf50;
+  }
+</style>
+
+<div class="container mt-4">
+  <!-- Kullanıcı Bilgileri -->
+  <div class="card">
+    <div class="card-body text-center">
+      <img
+        src="{% static 'images/avatar1.png' %}"
+        alt="Avatar"
+        class="rounded-circle mb-3"
+        width="100"
+        height="100"
+      />
+      <h5>{{ user.username }}</h5>
+      <p>ID: #{{ user.id }}</p>
+      <p>Level: {{ level }}</p>
+      <p>Puan: {{ points }}</p>
+      <!-- Puan burada gösteriliyor -->
+
+      <!-- Progress Bar -->
+      <div class="progress mt-3">
+        <div
+          class="progress-bar"
+          role="progressbar"
+          style="width: {{ progress }}%;"
+          aria-valuenow="{{ progress }}"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          Seviye {{ level }} ({{ points }} puan)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Açılan Özellikler -->
+  <div class="card mt-3">
+    <div class="card-body">
+      <h6>Açılan Özellikler</h6>
+      <ul>
+        <li{% if progress.can_use_bold_text %} class="text-success"{% else %} class="text-muted"{% endif %}>Kalın Yazı</li>
+        <li{% if progress.can_use_colored_text %} class="text-success"{% else %} class="text-muted"{% endif %}>Renkli Yazı</li>
+        <li{% if progress.can_use_background %} class="text-success"{% else %} class="text-muted"{% endif %}>Renkli Arka Plan</li>
+        <li{% if progress.can_share_gif %} class="text-success"{% else %} class="text-muted"{% endif %}>GIF Paylaşma</li>
+        <li{% if progress.can_share_photo %} class="text-success"{% else %} class="text-muted"{% endif %}>Fotoğraf Paylaşma</li>
+        <li{% if progress.can_share_audio %} class="text-success"{% else %} class="text-muted"{% endif %}>Ses Paylaşma</li>
+        <li{% if progress.can_share_video %} class="text-success"{% else %} class="text-muted"{% endif %}>Video Paylaşma</li>
+        <li{% if progress.can_spin_wheel %} class="text-success"{% else %} class="text-muted"{% endif %}>Çarkı Çevirme</li>
+        <li{% if progress.can_choose_reward %} class="text-success"{% else %} class="text-muted"{% endif %}>Ödül Seçme</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Grup Bilgileri -->
+  <div class="card mt-3">
+    <div class="card-body">
+      <h6>Grup Bilgileri</h6>
+      <p>Grup: {{ user.group.name }}</p>
+      <p>Grup Seviyesi: {{ group_level }}</p>
+      <p>Grup Toplam Puanı: {{ group_progress }}</p>
+    </div>
+  </div>
+
+  <!-- Grup İçi Sıralama -->
+  <div class="card mt-3">
+    <div class="card-body">
+      <h6>Grup İçi Sıralama</h6>
+      <p>Sıralamanız: #{{ user_ranking_in_group }} / {{ total_group_members }}</p>
+    </div>
+  </div>
+
+  <!-- Takım Bilgileri -->
+  {% if user.teams.exists %}
+  <div class="card mt-3">
+    <div class="card-body">
+      <h6>Takım Bilgileri</h6>
+      {% for team in user.teams.all %}
+      <p>Takım: {{ team.name }}</p>
+      <p>Takım Üye Sayısı: {{ team.members.count }}</p>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Şifre Değiştir -->
+  <div class="card mt-3">
+    <div class="card-body">
+      <a href="{% url 'password_change' %}" class="btn btn-primary">Şifreyi Değiştir</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
