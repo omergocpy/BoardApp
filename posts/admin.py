@@ -1,14 +1,29 @@
+# myapp/admin.py
 from django.contrib import admin
-from .models import Post, Comment, Like, Rating, Category
+from .models import Post, Comment, Like, Rating, Category, Poll, PollOption,PollVote
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('name',)
 
 
+class PollOptionInline(admin.TabularInline):
+    model = PollOption
+    extra = 1
 
-admin.site.register(Category)
+@admin.register(Poll)
+class PollAdmin(admin.ModelAdmin):
+    inlines = [PollOptionInline]
 
+@admin.register(PollVote)
+class PollVoteAdmin(admin.ModelAdmin):
+    list_display = ('poll', 'user', 'option', 'created_at')
+    list_filter = ('poll', 'user', 'option')
+    
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('user', 'content', 'created_at', 'approved')
-    list_filter = ('approved', 'created_at', 'user')
+    list_display = ('user', 'post_type', 'content', 'created_at', 'approved')
+    list_filter = ('approved', 'post_type', 'created_at', 'user')
     search_fields = ('user__username', 'content')
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
@@ -21,6 +36,7 @@ class CommentAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
 
+
 @admin.register(Like)
 class LikeAdmin(admin.ModelAdmin):
     list_display = ('user', 'post', 'like_type', 'created_at')
@@ -28,6 +44,7 @@ class LikeAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'post__content')
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
+
 
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):

@@ -7,8 +7,9 @@ class MessageInline(admin.TabularInline):
 
 @admin.register(SupportRequest)
 class SupportRequestAdmin(admin.ModelAdmin):
-    list_display = ('subject', 'category', 'user', 'status', 'created_at')
-    list_filter = ('category', 'status', 'created_at')
+    # Kategori olmadığı için 'category' çıkarıldı, istersek 'attachment' ekleyebiliriz.
+    list_display = ('subject', 'attachment', 'user', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
     search_fields = ('subject', 'user__username')
     inlines = [MessageInline]
 

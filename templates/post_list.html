@@ -2,184 +2,76 @@
 {% load static %}
 {% load custom_filters %}
 
-{% block title %}
-    Anasayfa
-{% endblock %}
-<style>
-    .post-card {
-        margin-bottom: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        background-color: #fff;
-    }
-
-    .post-card .card-header {
-        padding: 15px 20px;
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    .post-card .card-header a {
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .post-card .card-body {
-        padding: 20px;
-    }
-
-    .post-card .post-media img,
-    .post-card .post-media video {
-        width: 100%;
-        border-radius: 5px;
-        margin-top: 15px;
-    }
-
-    .comment-section {
-        margin-top: 20px;
-        padding: 15px;
-        background-color: #f9f9f9;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-    }
-
-    .comment-section h6 {
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 10px;
-    }
-
-    .comment {
-        background-color: #fff;
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .comment strong {
-        color: #333;
-    }
-
-    .comment small {
-        color: #999;
-    }
-
-    .post-card .btn-link {
-        padding-left: 0;
-        color: #007bff;
-        font-weight: bold;
-        text-decoration: none;
-    }
-
-    .post-card .btn-link:hover {
-        text-decoration: underline;
-    }
-
-    .text-right a {
-        margin-top: 20px;
-    }
-
-    @media (max-width: 576px) {
-        .post-card .card-header {
-            text-align: center;
-        }
-
-        .post-card .card-header .d-flex {
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .post-card .post-media img,
-        .post-card .post-media video {
-            margin-top: 10px;
-        }
-
-        .comment-section {
-            padding: 10px;
-        }
-    }
-</style>
+{% block title %}Paylaşımlar{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
+    <h2 class="mb-3">Gönderiler</h2>
+    <a href="{% url 'post_create' %}" class="btn btn-primary mb-4">Yeni Gönderi</a>
+
     {% for post in posts %}
-    <div class="card post-card">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
-            <a href="{% url 'profile_detail' post.user.id %}">
-                <div class="d-flex align-items-center">
-                    <img src="{% static 'images/'|add:post.user.avatar %}" alt="Avatar" class="rounded-circle mr-3" width="50" height="50">
-                    <div>
-                        <h5 class="mb-0">{{ post.user.username }}</h5>
-                        <small class="text-muted">{{ post.created_at|date:"d M Y H:i" }}</small>
-                    </div>
-                </div>
-            </a>
-            <div class="d-flex align-items-center flex-wrap">
-                <!-- Yorum İkonu ve Sayısı -->
-                <div class="d-flex align-items-center mr-3 mb-2">
-                    <i class="fas fa-comments" style="color: #007bff;"></i>
-                    <span class="ml-1">{{ post.comment_count }}</span>
-                </div>
-                <!-- Beğeni İkonu ve Sayısı -->
-                <div class="d-flex align-items-center mr-3 mb-2">
-                    <i class="fas fa-thumbs-up" style="color: #28a745;"></i>
-                    <span class="ml-1">{{ post.like_count }}</span>
-                </div>
-                <!-- Beğenmeme İkonu ve Sayısı -->
-                <div class="d-flex align-items-center mr-3 mb-2">
-                    <i class="fas fa-thumbs-down" style="color: #dc3545;"></i>
-                    <span class="ml-1">{{ post.dislike_count }}</span>
-                </div>
-                <!-- Oylama İkonu ve Yüzdesi -->
-                <div class="d-flex align-items-center mb-2">
-                    <i class="fas fa-star" style="color: #ffc107;"></i>
-                    <span class="ml-1">{{ post.rating_percentage }}%</span>
-                </div>
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between">
+            <div>
+                <strong>{{ post.user.username }}</strong><br>
+                <small class="text-muted">{{ post.created_at|date:"d M Y H:i" }}</small>
+            </div>
+            <div>
+                {% if post.post_type == 'poll' %}
+                    <span class="badge badge-warning">Anket</span>
+                {% elif post.post_type == 'photo' %}
+                    <span class="badge badge-info">Foto</span>
+                {% elif post.post_type == 'video' %}
+                    <span class="badge badge-danger">Video</span>
+                {% else %}
+                    <span class="badge badge-secondary">Metin</span>
+                {% endif %}
             </div>
         </div>
-        
-        <div class="card-body">
-            <p class="card-text">{{ post.content|truncatewords:30 }}</p>
-
+        <div class="card-body" style="
+            {% if post.is_bold %}font-weight: bold;{% endif %}
+            {% if post.text_color %}color: {{ post.text_color }};{% endif %}
+            {% if post.bg_color %}background-color: {{ post.bg_color }};{% endif %}
+        ">
+            <p>{{ post.content|truncatewords:30 }}</p>
             {% if post.media %}
-            <div class="post-media">
-                {% if post.media.url|endswith:".jpg" or post.media.url|endswith:".png" %}
-                    <img src="{{ post.media.url }}" alt="Post Media">
+                <!-- Basit kontrol -->
+                {% if post.media.url|lower|endswith:".jpg" or post.media.url|endswith:".png" or post.media.url|endswith:".jpeg" %}
+                    <img src="{{ post.media.url }}" alt="Görsel" class="img-fluid rounded">
                 {% elif post.media.url|endswith:".mp4" %}
-                    <video controls>
+                    <video controls class="img-fluid rounded mt-2">
                         <source src="{{ post.media.url }}" type="video/mp4">
                         Tarayıcınız bu videoyu desteklemiyor.
                     </video>
                 {% endif %}
-            </div>
             {% endif %}
+            
             <hr>
-            <!-- İlk 3 Yorum -->
-            <div class="comment-section">
-                <h6>Yorumlar:</h6>
-                {% for comment in post.top_comments %}
-                <div class="comment">
-                    <strong>{{ comment.user.username }}</strong> 
-                    <small class="float-right">{{ comment.created_at|date:"d M Y H:i" }}</small>
-                    <p class="mb-0">{{ comment.content }}</p>
-                </div>
-                {% endfor %}
-                {% if post.comment_count > 3 %}
-                <a href="{% url 'post_detail' post.id %}" class="btn btn-link">Daha fazla yorum</a>
-                {% endif %}
+             {% if post.top_comments %}
+        <div class="comment-section mb-2">
+            <h6>Yorumlar (ilk 3):</h6>
+            {% for c in post.top_comments %}
+            <div class="alert alert-secondary mb-2 p-2">
+                <strong>{{ c.user.username }}</strong><br>
+                <small class="text-muted">{{ c.created_at|date:"d M Y H:i" }}</small>
+                <p class="mb-0 mt-1">{{ c.content }}</p>
             </div>
-
-            <div class="text-right mt-3">
-                <a href="{% url 'post_detail' post.id %}" class="btn btn-primary">Detayları Görüntüle</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+            <div class="d-flex justify-content-between">
+                <div>
+                    <i class="fas fa-comments"></i> {{ post.comment_count }} 
+                    <i class="fas fa-thumbs-up ml-3" style="color: #28a745;"></i> {{ post.like_count }}
+                    <i class="fas fa-thumbs-down ml-3" style="color: #dc3545;"></i> {{ post.dislike_count }}
+                    <i class="fas fa-star ml-3" style="color: #ffc107;"></i> {{ post.rating_percentage }}%
+                </div>
+                <a href="{% url 'post_detail' post.id %}" class="btn btn-sm btn-outline-primary">Detay</a>
             </div>
         </div>
     </div>
+    {% empty %}
+    <p class="text-center text-muted">Henüz paylaşım yok.</p>
     {% endfor %}
-
-    {% if not posts %}
-    <p class="text-center text-muted">Gösterilecek gönderi yok.</p>
-    {% endif %}
 </div>
 {% endblock %}

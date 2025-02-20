@@ -21,3 +21,11 @@ def to_int(value):
         return int(value)
     except (ValueError, TypeError):
         return 0
+
+@register.filter(name='int')
+def force_int(value):
+    """String veya float gibi değerleri int'e çevirir."""
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return 0

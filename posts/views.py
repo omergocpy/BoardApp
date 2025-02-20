@@ -1,76 +1,72 @@
+# myapp/views.py
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import PostForm, CommentForm
-from django.db.models import Count, Q, Avg, Sum
-from .models import Post, Like, Rating, Comment
-from users.models import Progress
-from django.http import HttpResponse
-from django.contrib.auth import logout
-from users.utils import update_user_points
 from django.contrib.auth.decorators import login_required
+from .forms import PostForm, CommentForm, RatingForm
+from .models import Post, Like, Rating, Comment, Poll, PollOption, PollVote
+from users.models import Progress
+from django.db.models import Avg, Count, Sum
+from django.http import JsonResponse
 from django.contrib import messages
-
-
+from users.utils import update_user_points
+import json
 
 def check_for_first_post_in_category(post):
-    if not Post.objects.filter(category=post.category).exists():
-        print(f"İlk paylaşım bonusu veriliyor: {post.user.username}")
-        update_user_points(post.user, 50) 
-
-
-
-def check_for_daily_top_post():
-    from datetime import datetime
-    top_post = Post.objects.filter(created_at__date=datetime.today()).annotate(interactions=Count('likes') + Count('comments')).order_by('-interactions').first()
-    if top_post:
-        update_user_points(top_post.user, 50)  # Dünün öne çıkan paylaşımı sonrası puan güncelleme
-
+    # Kategorideki ilk gönderi bonusu
+    if post.category and not Post.objects.filter(category=post.category).exclude(id=post.id).exists():
+        update_user_points(post.user, 50)
 
 @login_required(login_url='login')  
 def post_list_view(request):
-    user_group = request.user.group  # Kullanıcının grubu
+    user_group = request.user.group  
     posts = Post.objects.filter(approved=True, user__group=user_group).order_by('-created_at')
 
     for post in posts:
         # Yorum sayısı
         post.comment_count = post.comments.filter(approved=True).count()
-
         # İlk 3 yorum
         post.top_comments = post.comments.filter(approved=True).order_by('created_at')[:3]
-
-        # Beğeni ve beğenmeme sayısı
+        # Beğeni sayıları
         post.like_count = post.likes.filter(like_type='like').count()
         post.dislike_count = post.likes.filter(like_type='dislike').count()
-
         # Oylama yüzdesi
         average_rating = post.ratings.aggregate(Avg('score'))['score__avg']
-        if average_rating:
-            post.rating_percentage = round((average_rating / 5) * 100)
-        else:
-            post.rating_percentage = 0
+        post.rating_percentage = round((average_rating / 5) * 100) if average_rating else 0
 
     return render(request, 'post_list.html', {'posts': posts})
 
 
-
 @login_required(login_url='login')  
 def post_create_view(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
+    progress, created = Progress.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            # Seviye kontrolü: post_type'ı alıp kapalı mı diye bakarız
+            post_type = form.cleaned_data.get('post_type')
+            print("DEBUG => post_type is:", post_type)  # Ekledik
+            if post_type == 'photo' and progress.level < 3:
+                messages.error(request, "Fotoğraf paylaşmak için seviye 3 gerekiyor.")
+                return redirect('post_create')
+            if post_type == 'video' and progress.level < 4:
+                messages.error(request, "Video paylaşmak için seviye 4 gerekiyor.")
+                return redirect('post_create')
+            if post_type == 'poll' and progress.level < 5:
+                messages.error(request, "Anket oluşturmak için seviye 5 gerekiyor.")
+                return redirect('post_create')
 
-    progress = Progress.objects.get_or_create(user=request.user)[0]
-    form = PostForm(request.POST or None, request.FILES or None, user=request.user)
+            post = form.save(commit=True)
+            post.user = request.user
+            post.save()
+            
+            # Kategorideki ilk paylaşım bonusu
+            check_for_first_post_in_category(post)
 
-    if request.method == 'POST' and form.is_valid():
-        post = form.save(commit=False)
-        post.user = request.user
-        post.save()
+            # Yeni gönderi puanı
+            update_user_points(request.user, 30)
 
-        # Kategorideki ilk gönderiyi kontrol et
-        check_for_first_post_in_category(post)
-
-        # Kullanıcıya puan ekle
-        update_user_points(request.user, 30) 
-        return redirect('post_list')
+            return redirect('post_list')
+    else:
+        form = PostForm(user=request.user)
 
     return render(request, 'post_create.html', {
         'form': form,
@@ -81,23 +77,35 @@ def post_create_view(request):
 @login_required(login_url='login')
 def post_detail_view(request, post_id):
     post = get_object_or_404(Post, id=post_id)
-    comments = post.comments.filter(parent=None, approved=True)  # Only approved comments
+    comments = post.comments.filter(parent=None, approved=True)
     comment_form = CommentForm()
 
     media_type = None
     if post.media:
-        if post.media.url.endswith(('.jpg', '.jpeg', '.png', '.gif')):
+        if post.media.url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
             media_type = 'image'
-        elif post.media.url.endswith('.mp4'):
+        elif post.media.url.lower().endswith('.mp4'):
             media_type = 'video'
 
-    # Calculate like and dislike counts
     like_count = post.likes.filter(like_type='like').count()
     dislike_count = post.likes.filter(like_type='dislike').count()
 
-    # Get users who rated the post and the current user's rating
     rated_users = post.ratings.all()
     user_rating = post.ratings.filter(user=request.user).first()
+
+    # Anket seçenekleri
+    poll_options = []
+    user_poll_vote = None  # Kullanıcının daha önceki seçeneği
+
+    if post.post_type == 'poll' and hasattr(post, 'poll'):
+        poll_options = post.poll.options.all()
+
+        # Kullanıcının daha önce bu ankete oy verip vermediğini sorgula
+        try:
+            user_poll_vote = PollVote.objects.get(poll=post.poll, user=request.user)
+            # user_poll_vote.option => kullanıcı hangi seçeneğe oy vermiş
+        except PollVote.DoesNotExist:
+            user_poll_vote = None
 
     if request.method == 'POST':
         if 'comment' in request.POST:
@@ -107,25 +115,8 @@ def post_detail_view(request, post_id):
                 comment.post = post
                 comment.user = request.user
                 comment.save()
-                
-                if created and request.user != post.user:
-                    update_user_points(post.user, 10)
-
+                # Puan eklenmesi vs.
                 return redirect('post_detail', post_id=post_id)
-
-        if 'score' in request.POST:
-            score = int(request.POST.get('score', 0))
-            rating, created = Rating.objects.get_or_create(post=post, user=request.user)
-            rating.score = score
-            rating.save()
-
-            if created and request.user != post.user:
-                update_user_points(post.user, score * 5)
-
-            return redirect('post_detail', post_id=post_id)
-
-
-
 
     return render(request, 'post_detail.html', {
         'post': post,
@@ -134,9 +125,70 @@ def post_detail_view(request, post_id):
         'media_type': media_type,
         'like_count': like_count,
         'dislike_count': dislike_count,
-        'rated_users': rated_users,  # Oylama yapan kullanıcılar
-        'user_rating': user_rating.score if user_rating else None,  # Kullanıcının oyu
+        'rated_users': rated_users,
+        'user_rating': user_rating.score if user_rating else None,
+        'poll_options': poll_options,
+        # Ekledik:
+        'user_poll_vote': user_poll_vote,
     })
+
+@login_required(login_url='login')
+def poll_vote_view(request, post_id):
+    """Bir seçenek seçerek oy verir, tekrar oy kullanmayı engeller."""
+    post = get_object_or_404(Post, id=post_id, post_type='poll')
+    poll = getattr(post, 'poll', None)
+    if not poll:
+        return redirect('post_detail', post_id=post_id)
+
+    option_id = request.POST.get('option_id')
+    # Seçenek doğrulama
+    option = get_object_or_404(PollOption, id=option_id, poll=poll)
+
+    # 1) Kullanıcı zaten oy vermiş mi?
+    existing_vote = PollVote.objects.filter(poll=poll, user=request.user).first()
+    if existing_vote:
+        # Zaten bu ankete oy kullanmış
+        messages.error(request, "Bu ankete zaten oy kullandınız!")
+        return redirect('post_detail', post_id=post_id)
+
+    # 2) İlk kez oy veriyor => PollVote kaydı ekle
+    PollVote.objects.create(
+        poll=poll,
+        user=request.user,
+        option=option
+    )
+
+    # 3) Seçilen seçenek oy sayısını 1 arttır
+    option.votes += 1
+    option.save()
+
+    # 4) Puanlama mantığı (oy veren yerine post sahibine puan verelim vs.)
+    if request.user != post.user:
+        update_user_points(post.user, 20)
+
+    messages.success(request, f"{option.text} seçeneğine oy verdiniz.")
+    return redirect('post_detail', post_id=post_id)
+
+
+@login_required(login_url='login')
+def poll_results_json(request, post_id):
+    """Chart.js için JSON veri döndürür."""
+    post = get_object_or_404(Post, id=post_id, post_type='poll')
+    poll = getattr(post, 'poll', None)
+    if not poll:
+        return JsonResponse({}, status=404)
+
+    labels = []
+    data = []
+    for opt in poll.options.all():
+        labels.append(opt.text)
+        data.append(opt.votes)
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data
+    })
+
 
 @login_required(login_url='login')
 def like_post_view(request, post_id):
@@ -144,30 +196,19 @@ def like_post_view(request, post_id):
     like_type = request.POST.get('like_type')  # "like" veya "dislike"
 
     existing_like = Like.objects.filter(post=post, user=request.user).first()
-
     if existing_like:
-        # Eğer mevcut bir kayıt varsa iki ihtimal:
-        # 1) Aynı türse => kullanıcı beğenisini kaldırıyor
-        # 2) Farklı türse => kullanıcı 'like'tan 'dislike'a veya tam tersi geçiyor
         if existing_like.like_type == like_type:
-            # 1) Tamamen kaldır
             existing_like.delete()
         else:
-            # 2) Tür değişikliği
             existing_like.like_type = like_type
             existing_like.save()
-        # NOT: Hiçbir puan değişikliği yapmayın.
     else:
-        # Hiç yok => yeni bir beğeni veya beğenmeme ekleniyor
         Like.objects.create(post=post, user=request.user, like_type=like_type)
-
-        # Kendi paylaşımından puan almaması için kontrol:
         if request.user != post.user:
             if like_type == "like":
-                update_user_points(request.user, 10)  # Yeni like
+                update_user_points(request.user, 10)
             else:
-                update_user_points(request.user, -10)  # Yeni dislike
-
+                update_user_points(request.user, -10)
     return redirect('post_detail', post_id=post.id)
 
 
@@ -175,11 +216,10 @@ def like_post_view(request, post_id):
 def rate_post_view(request, post_id):
     post = get_object_or_404(Post, id=post_id, approved=True)
     score = request.POST.get('score')
-
     try:
         score = int(score)
         if score < 1 or score > 5:
-            messages.error(request, "Geçersiz puan. Puan 1 ile 5 arasında olmalıdır.")
+            messages.error(request, "Geçersiz puan. 1 ile 5 arasında olmalı.")
             return redirect('post_detail', post_id=post.id)
     except (ValueError, TypeError):
         messages.error(request, "Geçersiz puan değeri.")
@@ -189,13 +229,12 @@ def rate_post_view(request, post_id):
     rating.score = score
     rating.save()
 
-    # Puan ekleme işlemini oy veren yerine post sahibine yapalım
-    if created:
+    # Puan verildiğinde post sahibine bonus
+    if created and request.user != post.user:
         update_user_points(post.user, score * 5)
 
-    messages.success(request, f"{score} yıldız verdiniz. Teşekkürler!")
+    messages.success(request, f"{score} yıldız verdiniz.")
     return redirect('post_detail', post_id=post.id)
-
 
 
 @login_required(login_url='login') 
@@ -206,73 +245,40 @@ def reply_comment_view(request, comment_id):
             post=comment.post,
             user=request.user,
             content=request.POST.get('content'),
-            parent=comment
+            parent=comment,
+            approved=True  # Moderasyon yoksa doğrudan onay
         )
+        update_user_points(request.user, 5)  # Yanıt için puan
         return redirect('post_detail', post_id=comment.post.id)
 
 
 @login_required(login_url='login')  
 def like_comment_view(request, comment_id):
-    try:
-        comment = get_object_or_404(Comment, id=comment_id)
-    except Comment.DoesNotExist:
-        return HttpResponse("Yorum bulunamadı veya onaylanmadı.", status=404)
-
-    # Beğenmeler arasında kullanıcı varsa kaldır, aksi halde ekle
+    comment = get_object_or_404(Comment, id=comment_id, approved=True)
     if request.user in comment.likes.all():
         comment.likes.remove(request.user)
     else:
-        # Kullanıcı daha önce beğenmeme yaptıysa, onu kaldır
         if request.user in comment.dislikes.all():
             comment.dislikes.remove(request.user)
-        comment.likes.add(request.user)  # Beğenme ekle
-
+        comment.likes.add(request.user)
     return redirect('post_detail', post_id=comment.post.id)
 
 
 @login_required(login_url='login') 
 def dislike_comment_view(request, comment_id):
-    try:
-        comment = get_object_or_404(Comment, id=comment_id)
-    except Comment.DoesNotExist:
-        return HttpResponse("Yorum bulunamadı veya onaylanmadı.", status=404)
-
-    # Beğenmeme listesi arasında kullanıcı varsa kaldır, aksi halde ekle
+    comment = get_object_or_404(Comment, id=comment_id, approved=True)
     if request.user in comment.dislikes.all():
         comment.dislikes.remove(request.user)
     else:
-        # Kullanıcı daha önce beğenme yaptıysa, onu kaldır
         if request.user in comment.likes.all():
             comment.likes.remove(request.user)
-        comment.dislikes.add(request.user)  # Beğenmeme ekle
-
+        comment.dislikes.add(request.user)
     return redirect('post_detail', post_id=comment.post.id)
-
-
-
-@login_required(login_url='login') 
-def logout_view(request):
-    logout(request)
-    return redirect('post_list')  
 
 
 @login_required(login_url='login') 
 def group_leaderboard_view(request):
     user_group = request.user.group
+    from users.models import Progress
     leaderboard = Progress.objects.filter(user__group=user_group).order_by('-points')
     return render(request, 'group_leaderboard.html', {'leaderboard': leaderboard})
-
-
-def update_group_progress(user, points):
-    user.progress.points += points
-    user.progress.save()
-
-    # Grup toplam puanını güncelle
-    user_group = user.group
-    group_total_points = Progress.objects.filter(user__group=user_group).aggregate(Sum('points'))['points__sum']
-    if group_total_points >= 500:
-        # Grubun seviyesi yükseltiliyor
-        user_group.level += 1
-        user_group.save()
-
-

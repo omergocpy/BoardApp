@@ -1,46 +1,14 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load custom_filters %}
+{% load custom_filters %}  {# endswith, to_int gibi filtreler varsa #}
 
 {% block title %}
-    {{ post.user.username }}'nin Gönderisi
+    Gönderi Detayı
 {% endblock %}
 
 {% block content %}
 <style>
-    /* Rating container: DOM sırasını ters çeviriyoruz */
-    .rating {
-        display: flex;
-        flex-direction: row-reverse; /* DOM sırasını ters çevirir, görselde solda 1, sağda 5 olur */
-        align-items: center;
-    }
-    .rating input {
-        display: none;
-    }
-    .rating label {
-        font-size: 2rem;
-        color: #ddd; /* Seçilmemiş yıldız rengi */
-        cursor: pointer;
-        transition: transform 0.3s ease, color 0.3s ease;
-        margin-left: 0.5rem; /* Yıldızlar arası boşluk */
-    }
-    /* İkonun rengi label’dan devralsın */
-    .rating label i {
-        color: inherit;
-    }
-    /* Hover efekti: Fare üzerine geldiğinde */
-    .rating label:hover,
-    .rating label:hover ~ label {
-        color: #ffc107;
-        transform: scale(1.2);
-    }
-    /* Seçili durumda: Radio işaretli ise, bu input’dan sonraki label’lar sarı olsun */
-    .rating input:checked ~ label {
-        color: #ffc107;
-        transform: scale(1.2);
-    }
-    
-    /* Diğer stil ayarları */
+    /* Kart stili */
     .card {
         border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -57,6 +25,8 @@
         padding: 20px;
         line-height: 1.6;
     }
+
+    /* Yorum ve Yanıtlar */
     .comment, .reply {
         background-color: #f8f9fa;
         padding: 15px;
@@ -71,32 +41,67 @@
         border-left: 4px solid #007bff;
         margin-left: 20px;
     }
+
+    /* Yıldızlı Puanlama (Star Rating) */
+    .rating {
+        display: flex;
+        flex-direction: row-reverse; /* DOM sırasını ters çevirip, sağdan sola yıldız */
+        align-items: center;
+        justify-content: flex-end;
+    }
+    .rating input {
+        display: none; /* Radio buton gizli */
+    }
+    .rating label {
+        font-size: 2rem;
+        color: #ddd; /* Pasif yıldız rengi */
+        cursor: pointer;
+        margin-left: 0.5rem;
+        transition: transform 0.3s ease, color 0.3s ease;
+    }
+    .rating label i {
+        color: inherit; /* i ikonu label’ın rengini devralsın */
+    }
+    .rating label:hover,
+    .rating label:hover ~ label {
+        color: #ffc107; /* Hover sarı */
+        transform: scale(1.2);
+    }
+    .rating input:checked ~ label {
+        color: #ffc107; /* Seçilmiş yıldızlar sarı */
+        transform: scale(1.2);
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
-        .d-flex {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .rating label {
-            font-size: 1.2rem;
-        }
         .card-header, .card-body {
             padding: 15px;
+        }
+        .rating label {
+            font-size: 1.5rem;
         }
     }
 </style>
 
 <div class="container mt-4">
+    <!-- Gönderi Kartı -->
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <a href="{% url 'profile_detail' post.user.id %}">
-                <div class="d-flex align-items-center">
-                    <img src="{% static 'images/'|add:post.user.avatar %}" alt="Avatar" class="rounded-circle mr-3" width="50" height="50">
-                    <div>
-                        <h5 class="mb-0">{{ post.user.username }}</h5>
-                        <small class="text-muted">{{ post.created_at|date:"d M Y H:i" }}</small>
-                    </div>
+            <!-- Kullanıcı Bilgisi -->
+            <div class="d-flex align-items-center">
+                <img src="{% static 'images/'|add:post.user.avatar %}" 
+                     alt="Avatar" 
+                     class="rounded-circle mr-3" 
+                     width="50" height="50">
+                <div>
+                    <h5 class="mb-0">{{ post.user.username }}</h5>
+                    <small class="text-muted">
+                        {{ post.created_at|date:"d M Y H:i" }}
+                    </small>
                 </div>
-            </a>
+            </div>
+
+            <!-- Beğeni / Beğenmeme -->
             <div class="d-flex align-items-center">
                 <form method="post" action="{% url 'like_post' post.id %}" class="d-flex">
                     {% csrf_token %}
@@ -110,96 +115,155 @@
             </div>
         </div>
 
-        <div class="card-body">
-            <p>{{ post.content }}</p>
+<div class="card-body">
+    <!-- Gönderi metni -->
+    <p>{{ post.content }}</p>
 
-            {% if post.media %}
-            <div class="mt-2 text-center">
-                {% if media_type == 'image' %}
-                    <img src="{{ post.media.url }}" alt="Post Media" class="img-fluid rounded">
-                {% elif media_type == 'video' %}
-                    <video controls class="img-fluid rounded">
-                        <source src="{{ post.media.url }}" type="video/mp4">
-                        Tarayıcınız bu videoyu desteklemiyor.
-                    </video>
-                {% endif %}
-            </div>
-            {% endif %}
-            <!-- Rating Section -->
-            <div class="rating">
-                {# DOM’da ters sıra: "54321". CSS sayesinde görselde solda 1, sağda 5 olacak #}
-                {% for i in "54321" %}
-                    <input 
-                        type="radio" 
-                        name="score" 
-                        id="rating-{{ i }}" 
-                        value="{{ i }}" 
-                        {% if user_rating == i|to_int %}checked{% endif %}>
-                    <label for="rating-{{ i }}" onclick="submitRating({{ i }})">
-                        <i class="fas fa-star"></i>
-                    </label>
-                {% endfor %}
-            </div>
-            <!-- Gizli rating formu -->
-            <form id="rating-form" method="post" action="{% url 'rate_post' post.id %}">
+    {% if post.post_type == 'poll' and poll_options %}
+    <div class="row">
+        <!-- Sol sütun: Anket seçenekleri -->
+        <div class="col-md-6">
+            <form method="post" action="{% url 'poll_vote' post.id %}">
                 {% csrf_token %}
-                <input type="hidden" id="rating-input" name="score" value="">
+                {% for opt in poll_options %}
+                <div class="form-check mb-2">
+                    <input class="form-check-input"
+                           type="radio"
+                           name="option_id"
+                           value="{{ opt.id }}"
+                           id="option{{ opt.id }}"
+                           {% if user_poll_vote and user_poll_vote.option.id == opt.id %}
+                               checked
+                           {% endif %}>
+                    <label class="form-check-label" for="option{{ opt.id }}">
+                        {{ opt.text }} ({{ opt.votes }} oy)
+                    </label>
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary mt-2">Oy Ver</button>
             </form>
-            
+        </div>
+        
+        <!-- Sağ sütun: Pasta grafiği (opsiyonel) -->
+        <div class="col-md-6 d-flex justify-content-center align-items-center">
+            <canvas id="pollChart" width="200" height="200"></canvas>
         </div>
     </div>
+    {% endif %}
+    
 
-    <!-- Comments Section -->
+    <!-- Foto/Video -->
+    {% if post.media %}
+        <div class="mt-2 text-center">
+            {% if media_type == 'image' %}
+                <img src="{{ post.media.url }}" alt="Post Media" class="img-fluid rounded">
+            {% elif media_type == 'video' %}
+                <video controls class="img-fluid rounded">
+                    <source src="{{ post.media.url }}" type="video/mp4">
+                    Tarayıcınız bu videoyu desteklemiyor.
+                </video>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <hr>
+
+
+
+    <!-- Yıldızlı Oylama (Score: 1-5) -->
+    <div class="rating mt-3">
+        {# DOM sırası 5-4-3-2-1, ekranda sağdan sola #}
+        {% for i in "54321" %}
+            <input 
+                type="radio" 
+                name="score" 
+                id="rating-{{ i }}" 
+                value="{{ i }}"
+                {% if user_rating == i|to_int %}checked{% endif %}>
+            <label for="rating-{{ i }}" onclick="submitRating({{ i }})">
+                <i class="fas fa-star"></i>
+            </label>
+        {% endfor %}
+    </div>
+    
+    <!-- Gizli form (Star Rating Gönderimi) -->
+    <form id="rating-form" method="post" action="{% url 'rate_post' post.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="score" id="rating-input" value="">
+    </form>
+</div>
+
+
+    </div>
+
+    <!-- Yorumlar Kartı -->
     <div class="card">
         <div class="card-body">
-            <h6 class="mb-3">Yorumlar:</h6>
-            <div class="comments-section">
-                {% for comment in comments %}
-                    {% if comment.approved %}
-                    <div class="comment">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <img src="{% static 'images/'|add:comment.user.avatar %}" alt="{{ comment.user.username }}'nin Avatarı" class="rounded-circle mr-2" width="35" height="35">
-                                <strong>{{ comment.user.username }}</strong>
-                            </div>
+            <h5>Yorumlar</h5>
+            {% for comment in comments %}
+                <div class="comment">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <img src="{% static 'images/'|add:comment.user.avatar %}" 
+                                 alt="{{ comment.user.username }}'nin Avatarı" 
+                                 class="rounded-circle mr-2" width="35" height="35">
+                            <strong>{{ comment.user.username }}</strong>
                         </div>
-                        <p class="mt-2">{{ comment.content }}</p>
-
-                        <!-- Reply Button -->
-                        <button class="btn btn-sm btn-link" data-toggle="collapse" data-target="#replyForm{{ comment.id }}">
-                            <i class="fas fa-reply"></i> Cevap Ver
-                        </button>
-
-                        <!-- Reply Form -->
-                        <div id="replyForm{{ comment.id }}" class="collapse mt-2">
-                            <form method="post" action="{% url 'reply_comment' comment.id %}">
-                                {% csrf_token %}
-                                <textarea class="form-control" name="content" rows="2" placeholder="Yanıt yaz..."></textarea>
-                                <button type="submit" class="btn btn-sm btn-primary mt-2">Gönder</button>
-                            </form>
-                        </div>
-
-                        <!-- Replies -->
-                        <div class="replies mt-4">
-                            {% for reply in comment.replies.all %}
-                                {% if reply.approved %}
-                                <div class="reply">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div class="d-flex align-items-center">
-                                            <img src="{% static 'images/'|add:reply.user.avatar %}" alt="{{ reply.user.username }}'nin Avatarı" class="rounded-circle mr-2" width="35" height="35">
-                                            <strong>{{ reply.user.username }}</strong>
-                                        </div>
-                                    </div>
-                                    <p class="mt-2">{{ reply.content }}</p>
-                                </div>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
+                        <small class="text-muted">{{ comment.created_at|date:"d M Y H:i" }}</small>
                     </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            <form method="post" action="{% url 'post_detail' post.id %}" class="mt-4">
+                    <p class="mt-2">{{ comment.content }}</p>
+                    
+                    <!-- Yanıt (Reply) Butonu -->
+                    <button class="btn btn-sm btn-link" data-toggle="collapse" data-target="#replyForm{{ comment.id }}">
+                        <i class="fas fa-reply"></i> Cevap Ver
+                    </button>
+
+                    <!-- Yorum Beğeni-Dislike (Opsiyonel) -->
+                    <form method="post" action="{% url 'like_comment' comment.id %}" class="d-inline-block ml-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-thumbs-up"></i> {{ comment.likes.count }}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'dislike_comment' comment.id %}" class="d-inline-block ml-1">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-thumbs-down"></i> {{ comment.dislikes.count }}
+                        </button>
+                    </form>
+
+                    <!-- Yanıt Formu (Collapse) -->
+                    <div id="replyForm{{ comment.id }}" class="collapse mt-2">
+                        <form method="post" action="{% url 'reply_comment' comment.id %}">
+                            {% csrf_token %}
+                            <textarea class="form-control" name="content" rows="2" placeholder="Yanıt yaz..."></textarea>
+                            <button type="submit" class="btn btn-sm btn-primary mt-2">Gönder</button>
+                        </form>
+                    </div>
+
+                    <!-- Yorumun Yanıtları -->
+                    {% for reply in comment.replies.all %}
+                        <div class="reply mt-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <img src="{% static 'images/'|add:reply.user.avatar %}" 
+                                         alt="{{ reply.user.username }} Avatar" 
+                                         class="rounded-circle mr-2" width="30" height="30">
+                                    <strong>{{ reply.user.username }}</strong>
+                                </div>
+                                <small class="text-muted">{{ reply.created_at|date:"d M Y H:i" }}</small>
+                            </div>
+                            <p class="mt-2">{{ reply.content }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% empty %}
+                <p class="text-muted">Henüz yorum yok.</p>
+            {% endfor %}
+
+            <!-- Yeni Yorum Formu -->
+            <hr>
+            <form method="post" action="">
                 {% csrf_token %}
                 {{ comment_form.as_p }}
                 <button type="submit" name="comment" class="btn btn-primary">Yorum Yap</button>
@@ -208,37 +272,46 @@
     </div>
 </div>
 
-<!-- Rated Users Modal -->
-<div class="modal fade" id="ratedUsersModal" tabindex="-1" role="dialog" aria-labelledby="ratedUsersModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="ratedUsersModalLabel">Oylama Yapan Kullanıcılar</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Kapat">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <ul class="list-group">
-                    {% for rating in rated_users %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ rating.user.username }}
-                            <span class="badge badge-primary badge-pill">{{ rating.score }} Yıldız</span>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+<!-- Chart.js CDN (Anket Sonuçları için) -->
+{% if post.post_type == 'poll' and poll_options %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    function submitRating(score) {
-        document.getElementById('rating-input').value = score;
-        document.getElementById('rating-form').submit();
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('pollChart').getContext('2d');
+    // poll_results_json endpoint’inden anket seçeneklerini çekeceğinizi varsayıyoruz
+    fetch("{% url 'poll_results_json' post.id %}")
+    .then(response => response.json())
+    .then(data => {
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.data,
+                    backgroundColor: [
+                        '#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF','#FF9F40'
+                    ]
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio:false,
+                title: {
+                    display: true,
+                    text: 'Anket Sonuçları'
+                }
+            }
+        });
+    });
+});
+</script>
+{% endif %}
+
+<!-- Yıldızlı Puanlama Submit -->
+<script>
+function submitRating(score) {
+    document.getElementById('rating-input').value = score;
+    document.getElementById('rating-form').submit();
+}
 </script>
 {% endblock %}

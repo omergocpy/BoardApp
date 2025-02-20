@@ -13,7 +13,7 @@ from django.core.paginator import Paginator
 
 def login_view(request, username=None):
     if request.method == 'POST':
-        username = request.POST['username']
+        username = request.POST['username']  
         password = request.POST['password']
         user = authenticate(request, username=username, password=password)
         if user is not None:
@@ -28,9 +28,15 @@ def login_view(request, username=None):
 
 
 def generate_random_id():
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return str(random.randint(1000, 9999))
 
 
+def generate_unique_numeric_username():
+    while True:
+        username_candidate = str(random.randint(1000, 9999))
+        if not CustomUser.objects.filter(username=username_candidate).exists():
+            return username_candidate
+        
 def assign_group_to_user(user):
     groups = Group.objects.all()
     assigned_group = random.choice(groups)  
@@ -43,16 +49,18 @@ def register_view(request):
         form = RegisterForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save(commit=False)
-            user.username = generate_random_id()
+            user.username = generate_unique_numeric_username() 
             user.save()
-            assign_group_to_user(user)  
-            Progress.objects.create(user=user)  
+            assign_group_to_user(user)
+            Progress.objects.create(user=user)
+
+            messages.success(request, f"Tebrikler! Kayıt tamamlandı. Kullanıcı ID'niz: {user.username}.\n"
+                                      "Lütfen not almayı unutmayın.")
+
             return redirect('login_with_username', username=user.username)
     else:
         form = RegisterForm()
-
     return render(request, 'register.html', {'form': form})
-
 
 @login_required(login_url='login')  
 def home_view(request):

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Destek Talebi Detayı{% endblock %}
 
@@ -6,20 +7,41 @@
 <div class="container mt-4">
     <div class="card shadow">
         <div class="card-header bg-info text-white">
-            <h3>{{ support_request.subject }} <span class="badge badge-light">{{ support_request.get_category_display }}</span></h3>
-            <p class="mb-0"><strong>Durum:</strong> {{ support_request.get_status_display }}</p>
+            <h4>{{ support_request.subject }}</h4>
+            <p class="mb-0">
+                <strong>Durum:</strong> {{ support_request.get_status_display }}
+            </p>
         </div>
         <div class="card-body">
-            <h4>Mesajlar</h4>
+            <!-- Ana Talep Mesajı -->
+            <div class="mb-3">
+                <h5>Talep İçeriği</h5>
+                <p>{{ support_request.message }}</p>
+                {% if support_request.attachment %}
+                    <p><strong>Ekli Dosya:</strong> 
+                        <!-- Resim ise önizleme, PDF ise tıklayarak açılır -->
+                        <a href="{{ support_request.attachment.url }}" target="_blank">
+                            Dosyayı Görüntüle / İndir
+                        </a>
+                    </p>
+                    <!-- Örnek: Resim önizlemesi yapmak isterseniz 
+                    <img src="{{ support_request.attachment.url }}" alt="Dosya" style="max-width: 200px;">
+                    -->
+                {% endif %}
+            </div>
+
+            <hr>
+            <!-- Mesajlar -->
+            <h5>Mesajlar</h5>
             <div class="message-list">
-                {% for message in messages %}
-                    <div class="card mb-3 {% if message.sender == request.user %}bg-light{% else %}bg-white{% endif %}">
+                {% for msg in messages %}
+                    <div class="card mb-2 {% if msg.sender == request.user %}bg-light{% else %}bg-white{% endif %}">
                         <div class="card-body">
-                            <strong class="{% if message.sender == request.user %}text-primary{% else %}text-secondary{% endif %}">
-                                {{ message.sender.username }}
+                            <strong class="{% if msg.sender == request.user %}text-primary{% else %}text-secondary{% endif %}">
+                                {{ msg.sender.username }}
                             </strong> 
-                            <span class="text-muted small">({{ message.created_at|date:"d M Y H:i" }})</span>
-                            <p class="mt-2">{{ message.content }}</p>
+                            <span class="text-muted small">({{ msg.created_at|date:"d M Y H:i" }})</span>
+                            <p class="mt-2">{{ msg.content }}</p>
                         </div>
                     </div>
                 {% empty %}
@@ -27,8 +49,8 @@
                 {% endfor %}
             </div>
 
-            <h4 class="mt-4">Yeni Mesaj Gönder</h4>
-            <form method="post" class="mt-3">
+            <h5 class="mt-4">Yeni Mesaj Gönder</h5>
+            <form method="post">
                 {% csrf_token %}
                 {{ message_form.as_p }}
                 <button type="submit" class="btn btn-primary">Mesaj Gönder</button>

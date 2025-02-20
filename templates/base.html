@@ -134,18 +134,20 @@
 </head>
 <body>
     <!-- Navbar -->
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light">
-        <a class="navbar-brand" href="/">
-            <!-- <img src="{% static 'logo.png' %}" alt="Logo" style="max-height: 30px;">--> <b style="color:white">Board</b> 
+        <a class="navbar-brand d-flex align-items-center" href="/">
+            <i class="fas fa-chess-board" style="color: white; font-size: 1.6rem; margin-right: 8px;"></i>
+            <span style="color: white; font-style: italic; font-size: 1.6rem;">
+                board
+            </span>
         </a>
+        
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#mobileNavbar" aria-controls="mobileNavbar" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mobileNavbar">
             <ul class="navbar-nav ml-auto">
                 {% if not request.user.is_authenticated %}
-                    <!-- Kullanıcı Giriş Yapmamışsa -->
                     <li class="nav-item">
                         <a class="nav-link" href="/register">Kayıt Ol</a>
                     </li>
@@ -153,7 +155,6 @@
                         <a class="nav-link" href="/login">Giriş Yap</a>
                     </li>
                 {% else %}
-                    <!-- Kullanıcı Giriş Yapmışsa -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-user"></i> {{ request.user.username }}
@@ -184,7 +185,7 @@
     <!-- Footer -->
     {% if request.user.is_authenticated %}
     <div class="footer">
-        <a href="/" class="footer-link">
+        <a href="/home" class="footer-link">
             <i class="fas fa-home"></i>
             <span>Anasayfa</span>
         </a>

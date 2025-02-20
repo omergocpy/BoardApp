@@ -1,21 +1,21 @@
+# myapp/forms.py
 from django import forms
 from .models import SupportRequest, Message
 
 class SupportRequestForm(forms.ModelForm):
     class Meta:
         model = SupportRequest
-        fields = ['category', 'subject', 'message']
+        fields = ['subject', 'message', 'attachment']
         labels = {
-            'category': 'Kategori',
             'subject': 'Konu',
             'message': 'Mesaj',
+            'attachment': 'Dosya Eki'
         }
         widgets = {
-            'category': forms.Select(attrs={'class': 'form-control'}),
             'subject': forms.TextInput(attrs={'class': 'form-control'}),
             'message': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'attachment': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
-
 
 class MessageForm(forms.ModelForm):
     class Meta:
