@@ -53,7 +53,6 @@
 <div class="form-container">
     <h2 class="mb-4 text-center">Yeni Gönderi Oluştur</h2>
 
-    <!-- Gönderi Türü Seçenekleri -->
     <div class="post-type-options">
         <div class="post-type-option" id="pt-text" data-type="text">Metin</div>
         <div class="post-type-option {% if level < 3 %}disabled{% endif %}" id="pt-photo" data-type="photo">Fotoğraf</div>
@@ -64,8 +63,6 @@
     <form method="post" enctype="multipart/form-data" id="postForm">
         {% csrf_token %}
         
-        <!-- Django form alanları -->
-        <!-- post_type, content, media, is_bold, text_color, bg_color, option1..4 -->
         <div class="form-group" style="display:none;">
             {{ form.post_type }}
         </div>
@@ -75,7 +72,6 @@
             {{ form.content }}
         </div>
 
-        <!-- Stil alanları -->
         <div class="form-group">
             <div class="form-check">
                 {{ form.is_bold }}
@@ -93,13 +89,11 @@
             </div>
         </div>
 
-        <!-- Medya -->
         <div class="form-group" id="media-group" style="display:none;">
             <label for="id_media">Medya Seç</label>
             {{ form.media }}
         </div>
 
-        <!-- Anket Seçenekleri -->
         <div class="poll-options" id="poll-options">
             <label>Anket Seçenekleri (Boş bıraktıklarınız eklenmez)</label>
             <div class="form-group">
@@ -141,7 +135,6 @@
             }
         }
 
-        // Başlangıçta varsayılan text
         postTypeSelect.value = 'text';
         setActiveOption('text');
 
@@ -155,7 +148,6 @@
                 postTypeSelect.value = chosenType;
                 setActiveOption(chosenType);
 
-                // Medya zorunlu mu vs. basit bir mantık
                 if (chosenType === 'text') {
                     mediaGroup.style.display = 'none';
                     pollOptionsDiv.style.display = 'none';

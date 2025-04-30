@@ -8,7 +8,6 @@
 
 {% block content %}
 <style>
-    /* Kart stili */
     .card {
         border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -26,7 +25,6 @@
         line-height: 1.6;
     }
 
-    /* Yorum ve Yanıtlar */
     .comment, .reply {
         background-color: #f8f9fa;
         padding: 15px;
@@ -42,37 +40,35 @@
         margin-left: 20px;
     }
 
-    /* Yıldızlı Puanlama (Star Rating) */
     .rating {
         display: flex;
-        flex-direction: row-reverse; /* DOM sırasını ters çevirip, sağdan sola yıldız */
+        flex-direction: row-reverse;
         align-items: center;
         justify-content: flex-end;
     }
     .rating input {
-        display: none; /* Radio buton gizli */
+        display: none; 
     }
     .rating label {
         font-size: 2rem;
-        color: #ddd; /* Pasif yıldız rengi */
+        color: #ddd; 
         cursor: pointer;
         margin-left: 0.5rem;
         transition: transform 0.3s ease, color 0.3s ease;
     }
     .rating label i {
-        color: inherit; /* i ikonu label’ın rengini devralsın */
+        color: inherit; 
     }
     .rating label:hover,
     .rating label:hover ~ label {
-        color: #ffc107; /* Hover sarı */
+        color: #ffc107; 
         transform: scale(1.2);
     }
     .rating input:checked ~ label {
-        color: #ffc107; /* Seçilmiş yıldızlar sarı */
+        color: #ffc107;
         transform: scale(1.2);
     }
 
-    /* Responsive */
     @media (max-width: 768px) {
         .card-header, .card-body {
             padding: 15px;
@@ -84,24 +80,45 @@
 </style>
 
 <div class="container mt-4">
-    <!-- Gönderi Kartı -->
+    {% if messages %}
+<div class="row">
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">       
+            {{ message }}
+            {% if "takip anketi" in message.message|lower %}
+                <a href="{% url 'second_survey' %}" class="btn btn-success ml-3">Takip Anketini Doldur</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+    {% if request.user.is_authenticated %}
+
+{% endif %}
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <!-- Kullanıcı Bilgisi -->
+
+
             <div class="d-flex align-items-center">
                 <img src="{% static 'images/'|add:post.user.avatar %}" 
                      alt="Avatar" 
                      class="rounded-circle mr-3" 
                      width="50" height="50">
                 <div>
-                    <h5 class="mb-0">{{ post.user.username }}</h5>
-                    <small class="text-muted">
-                        {{ post.created_at|date:"d M Y H:i" }}
-                    </small>
+                    {% if post.user.team and post.user.group.name in 'CDF' %}
+                        <h5 class="mb-0">{{ post.user.team.name }}</h5>
+                        <small class="text-muted">Takım Üyesi</small>
+                    {% else %}
+                        <h5 class="mb-0">{{ post.user.username }}</h5>
+                        <small class="text-muted">
+                            {{ post.created_at|date:"d M Y H:i" }}
+                        </small>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- Beğeni / Beğenmeme -->
             <div class="d-flex align-items-center">
                 <form method="post" action="{% url 'like_post' post.id %}" class="d-flex">
                     {% csrf_token %}
@@ -116,7 +133,6 @@
         </div>
 
 <div class="card-body">
-    <!-- Gönderi metni -->
     <p>{{ post.content }}</p>
 
     {% if post.post_type == 'poll' and poll_options %}
@@ -196,7 +212,6 @@
 
     </div>
 
-    <!-- Yorumlar Kartı -->
     <div class="card">
         <div class="card-body">
             <h5>Yorumlar</h5>
@@ -207,18 +222,22 @@
                             <img src="{% static 'images/'|add:comment.user.avatar %}" 
                                  alt="{{ comment.user.username }}'nin Avatarı" 
                                  class="rounded-circle mr-2" width="35" height="35">
-                            <strong>{{ comment.user.username }}</strong>
+                            {% if comment.user.team and comment.user.group.name in 'CDF' %}
+                                <span class="team-badge">
+                                    <strong class="team-name">{{ comment.user.team.name }}</strong>
+                                </span>
+                            {% else %}
+                                <strong>{{ comment.user.username }}</strong>
+                            {% endif %}
                         </div>
                         <small class="text-muted">{{ comment.created_at|date:"d M Y H:i" }}</small>
                     </div>
                     <p class="mt-2">{{ comment.content }}</p>
                     
-                    <!-- Yanıt (Reply) Butonu -->
                     <button class="btn btn-sm btn-link" data-toggle="collapse" data-target="#replyForm{{ comment.id }}">
                         <i class="fas fa-reply"></i> Cevap Ver
                     </button>
-
-                    <!-- Yorum Beğeni-Dislike (Opsiyonel) -->
+    
                     <form method="post" action="{% url 'like_comment' comment.id %}" class="d-inline-block ml-2">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-success">
@@ -231,7 +250,7 @@
                             <i class="fas fa-thumbs-down"></i> {{ comment.dislikes.count }}
                         </button>
                     </form>
-
+    
                     <!-- Yanıt Formu (Collapse) -->
                     <div id="replyForm{{ comment.id }}" class="collapse mt-2">
                         <form method="post" action="{% url 'reply_comment' comment.id %}">
@@ -240,7 +259,7 @@
                             <button type="submit" class="btn btn-sm btn-primary mt-2">Gönder</button>
                         </form>
                     </div>
-
+    
                     <!-- Yorumun Yanıtları -->
                     {% for reply in comment.replies.all %}
                         <div class="reply mt-3">
@@ -249,7 +268,13 @@
                                     <img src="{% static 'images/'|add:reply.user.avatar %}" 
                                          alt="{{ reply.user.username }} Avatar" 
                                          class="rounded-circle mr-2" width="30" height="30">
-                                    <strong>{{ reply.user.username }}</strong>
+                                    {% if reply.user.team and reply.user.group.name in 'CDF' %}
+                                        <span class="team-badge">
+                                            <strong class="team-name">{{ reply.user.team.name }}</strong>
+                                        </span>
+                                    {% else %}
+                                        <strong>{{ reply.user.username }}</strong>
+                                    {% endif %}
                                 </div>
                                 <small class="text-muted">{{ reply.created_at|date:"d M Y H:i" }}</small>
                             </div>
@@ -260,8 +285,7 @@
             {% empty %}
                 <p class="text-muted">Henüz yorum yok.</p>
             {% endfor %}
-
-            <!-- Yeni Yorum Formu -->
+    
             <hr>
             <form method="post" action="">
                 {% csrf_token %}
@@ -272,13 +296,11 @@
     </div>
 </div>
 
-<!-- Chart.js CDN (Anket Sonuçları için) -->
 {% if post.post_type == 'poll' and poll_options %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('pollChart').getContext('2d');
-    // poll_results_json endpoint’inden anket seçeneklerini çekeceğinizi varsayıyoruz
     fetch("{% url 'poll_results_json' post.id %}")
     .then(response => response.json())
     .then(data => {
@@ -307,7 +329,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 
-<!-- Yıldızlı Puanlama Submit -->
 <script>
 function submitRating(score) {
     document.getElementById('rating-input').value = score;

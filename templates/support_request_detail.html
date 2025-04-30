@@ -31,23 +31,26 @@
             </div>
 
             <hr>
-            <!-- Mesajlar -->
             <h5>Mesajlar</h5>
-            <div class="message-list">
-                {% for msg in messages %}
-                    <div class="card mb-2 {% if msg.sender == request.user %}bg-light{% else %}bg-white{% endif %}">
-                        <div class="card-body">
-                            <strong class="{% if msg.sender == request.user %}text-primary{% else %}text-secondary{% endif %}">
-                                {{ msg.sender.username }}
-                            </strong> 
-                            <span class="text-muted small">({{ msg.created_at|date:"d M Y H:i" }})</span>
-                            <p class="mt-2">{{ msg.content }}</p>
-                        </div>
-                    </div>
-                {% empty %}
-                    <p class="text-muted">Henüz mesaj yok.</p>
-                {% endfor %}
+            {% for msg in messages %}
+            <div class="card mb-2 {% if msg.sender == request.user %}bg-light{% else %}bg-white{% endif %}">
+                <div class="card-body">
+                    {% if msg.sender.team and msg.sender.group.name in 'CDF' %}
+                        <strong class="{% if msg.sender == request.user %}text-primary{% else %}text-secondary{% endif %}">
+                            {{ msg.sender.team.name }}
+                        </strong> 
+                    {% else %}
+                        <strong class="{% if msg.sender == request.user %}text-primary{% else %}text-secondary{% endif %}">
+                            {{ msg.sender.username }}
+                        </strong> 
+                    {% endif %}
+                    <span class="text-muted small">({{ msg.created_at|date:"d M Y H:i" }})</span>
+                    <p class="mt-2">{{ msg.content }}</p>
+                </div>
             </div>
+        {% empty %}
+            <p class="text-muted">Henüz mesaj yok.</p>
+        {% endfor %}
 
             <h5 class="mt-4">Yeni Mesaj Gönder</h5>
             <form method="post">

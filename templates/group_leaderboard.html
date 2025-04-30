@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Grup Sıralaması{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Grup Sıralaması</h2>
+    
+    {% if user.group %}
+    <div class="alert alert-info">
+        <strong>Grup:</strong> {{ user.group.get_name_display }} - 
+        {% if ranking_info.is_team_based %}
+        <strong>Takımınız:</strong> {{ ranking_info.team_name }} - 
+        <strong>Takım Sıralaması:</strong> {{ ranking_info.rank }}. sırada
+        {% else %}
+        <strong>Sıralamanız:</strong> 
+        {% if ranking_info.rank %}
+            {{ ranking_info.rank }}. sırada ({{ ranking_info.total_members }} üye arasında)
+        {% else %}
+            Sıralama bilgisi bulunamadı.
+        {% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Kişisel Sıralama</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th>Kullanıcı</th>
+                            <th>Puan</th>
+                            <th>Seviye</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user_progress in leaderboard %}
+                        <tr {% if user_progress.user == request.user %}class="table-success"{% endif %}>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ user_progress.user.username }}</td>
+                            <td>{{ user_progress.points }}</td>
+                            <td>{{ user_progress.level }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4">Henüz sıralama bilgisi bulunmuyor.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

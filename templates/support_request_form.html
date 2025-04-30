@@ -6,7 +6,6 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Yeni Destek Talebi</h2>
-    <!-- Dosya yüklemek için "enctype" mutlaka gerekli -->
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="form-group">

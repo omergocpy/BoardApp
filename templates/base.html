@@ -7,6 +7,27 @@
     <title>{% block title %}Board App{% endblock %}</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+        <meta name="theme-color" content="#ff7f0e">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="BoardApp">
+
+        <link rel="apple-touch-icon" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-icon" sizes="152x152" href="{% static 'logo' %}">
+        <link rel="apple-touch-icon" sizes="180x180" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-icon" sizes="167x167" href="{% static 'logo.png' %}">
+
+        <link rel="manifest" href="{% static 'manifest.json' %}">
+        
+        <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2)" href="{% static 'logo.png' %}">
+        <link rel="apple-touch-startup-image" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)" href="{% static 'logo.png' %}">
+
     <style>
         body {
             background-color: #f0f0f0;
@@ -130,10 +151,34 @@
                 font-size: 0.9rem;
             }
         }
+        .team-name {
+        background-color: #ff7f0e;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 15px;
+        font-weight: bold;
+        display: inline-block;
+    }
+    
+    .team-badge {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .team-badge::after {
+        content: "Takım";
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background-color: #28a745;
+        color: white;
+        font-size: 10px;
+        padding: 2px 5px;
+        border-radius: 10px;
+    }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light">
         <a class="navbar-brand d-flex align-items-center" href="/">
             <i class="fas fa-chess-board" style="color: white; font-size: 1.6rem; margin-right: 8px;"></i>
@@ -157,27 +202,29 @@
                 {% else %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            {% if group_features.has_leaderboard or group_features.has_progress_bar %}
+                            <i class="fas fa-trophy"></i> Seviye: {{ level }} | Puan: {{ points }}
+                          {% else %}
                             <i class="fas fa-user"></i> {{ request.user.username }}
+                          {% endif %}
+                        </span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
                             <a class="dropdown-item" href="/profil">Profil</a>
                             <a class="dropdown-item" href="/logout">Çıkış Yap</a>
+                            <a class="dropdown-item" href="{{ leaderboard_url }}" class="footer-link">Sıralama</a>
+
                             {% if is_admin %}
                             <a class="dropdown-item" href="/admin">Admin Panel</a>
                             {% endif %}
                         </div>
                     </li>
-                    <li class="nav-item">
-                        <span class="nav-link">
-                            <i class="fas fa-trophy"></i> Seviye: {{ level }} | Puan: {{ points }}
-                        </span>
-                    </li>
+
                 {% endif %}
             </ul>
         </div>
     </nav>
 
-    <!-- Content -->
     <div class="container mt-1 mb-5">
         {% block content %}{% endblock %}
     </div>

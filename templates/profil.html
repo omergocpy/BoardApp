@@ -14,8 +14,8 @@ Profil
   }
 
   .progress-bar {
-    background-color: #ff6700; /* Modern turuncu renk */
-    transition: width 0.6s ease; /* Yavaşça genişlemesi için animasyon */
+    background-color: #ff6700; 
+    transition: width 0.6s ease; 
   }
 
   .text-muted {
@@ -25,91 +25,206 @@ Profil
   .text-success {
     color: #4caf50;
   }
+  
+  .feature-list {
+    list-style: none;
+    padding-left: 0;
+  }
+  
+  .feature-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .feature-item:last-child {
+    border-bottom: none;
+  }
+  
+  .feature-name {
+    display: flex;
+    align-items: center;
+  }
+  
+  .feature-name i {
+    margin-right: 10px;
+    font-size: 1.2rem;
+  }
+  
+  .feature-locked {
+    color: #aaa;
+    text-decoration: line-through;
+  }
+  
+  .feature-unlocked {
+    color: #333;
+    font-weight: 500;
+  }
+  
+  .feature-requirement {
+    background-color: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    color: #6c757d;
+  }
+  
+  .feature-unlocked-badge {
+    background-color: #28a745;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+  }
 </style>
 
 <div class="container mt-4">
-  <!-- Kullanıcı Bilgileri -->
   <div class="card">
     <div class="card-body text-center">
-      <img
-        src="{% static 'images/avatar1.png' %}"
-        alt="Avatar"
-        class="rounded-circle mb-3"
-        width="100"
-        height="100"
-      />
-      <h5>{{ user.username }}</h5>
-      <p>ID: #{{ user.id }}</p>
-      <p>Level: {{ level }}</p>
-      <p>Puan: {{ points }}</p>
-      <!-- Puan burada gösteriliyor -->
+      <img src="{% static 'images/'|add:user.avatar|default:'avatar1.png' %}" 
+           alt="Avatar" 
+           class="rounded-circle mb-3" 
+           width="100" 
+           height="100" />
+      
+      {% if user.team %}
+        <h4 class="mb-0">
+          <span class="badge badge-primary px-3 py-2" style="background-color: #ff7f0e;">
+            <i class="fas fa-users mr-2"></i> {{ user.team.name }} Takımı
+          </span>
+        </h4>
+        <p class="text-muted mt-2">{{ user.group.get_name_display }} Grubu</p>
+      {% else %}
+        <h4 class="mb-0">ID: #{{ user.username }}</h4>
 
-      <!-- Progress Bar -->
-      <div class="progress mt-3">
-        <div
-          class="progress-bar"
-          role="progressbar"
-          style="width: {{ progress }}%;"
-          aria-valuenow="{{ progress }}"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        >
-          Seviye {{ level }} ({{ points }} puan)
+        {% if group_name %}
+          <p class="badge badge-info">{{ user.group.get_name_display }} Grubu</p>
+        {% endif %}
+      {% endif %}
+      
+      {% if group_features.has_leaderboard or group_features.has_progress_bar %}
+        <div class="bg-light rounded p-3 my-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span><i class="fas fa-signal text-primary"></i> Level</span>
+            <span class="badge badge-primary">{{ level }}</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-star text-warning"></i> Puan</span>
+            <span class="badge badge-warning">{{ points }}</span>
+          </div>
+        </div>
+      {% endif %}
+  
+      {% if group_features.has_progress_bar %}
+        <div class="progress mt-3">
+          <div class="progress-bar" role="progressbar" 
+               style="width: {{ progress }}%; background-color: #ff7f0e;" 
+               aria-valuenow="{{ progress }}" 
+               aria-valuemin="0" 
+               aria-valuemax="100">
+            {{ progress_text }}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if group_features.has_leaderboard %}
+    <div class="card mt-3">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+          {% if ranking_info.is_team_based %}
+            <i class="fas fa-trophy mr-2"></i> Takım Sıralaması
+          {% else %}
+            <i class="fas fa-trophy mr-2"></i> Kişisel Sıralama
+          {% endif %}
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="text-center">
+          {% if ranking_info.is_team_based %}
+            <div class="display-4 text-primary mb-3">{{ ranking_info.rank }}</div>
+            <p class="lead">
+              <strong>{{ ranking_info.team_name }}</strong> takımınız, toplam <strong>{{ ranking_info.total_members }}</strong> takım arasında 
+              <strong>{{ ranking_info.rank }}.</strong> sırada yer alıyor.
+            </p>
+            <p class="text-muted">Takım Toplam Puanı: <strong>{{ ranking_info.points }}</strong></p>
+          {% else %}
+            <div class="display-4 text-primary mb-3">{{ ranking_info.rank }}</div>
+            <p class="lead">
+              <strong>{{ user.group.get_name_display }}</strong> grubunda, toplam <strong>{{ ranking_info.total_members }}</strong> üye arasında 
+              <strong>{{ ranking_info.rank }}.</strong> sıradasınız.
+            </p>
+            <p class="text-muted">Kişisel Puanınız: <strong>{{ ranking_info.points }}</strong></p>
+          {% endif %}
+        </div>
+        
+        <!-- Sıralama için hızlı link -->
+        <div class="text-center mt-3">
+          <a href="{{ leaderboard_url }}" class="btn btn-outline-primary">
+            <i class="fas fa-list-ol mr-2"></i> Tam Sıralamayı Görüntüle
+          </a>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Açılan Özellikler -->
-  <div class="card mt-3">
-    <div class="card-body">
-      <h6>Açılan Özellikler</h6>
-      <ul>
-        <li{% if progress.can_use_bold_text %} class="text-success"{% else %} class="text-muted"{% endif %}>Kalın Yazı</li>
-        <li{% if progress.can_use_colored_text %} class="text-success"{% else %} class="text-muted"{% endif %}>Renkli Yazı</li>
-        <li{% if progress.can_use_background %} class="text-success"{% else %} class="text-muted"{% endif %}>Renkli Arka Plan</li>
-        <li{% if progress.can_share_gif %} class="text-success"{% else %} class="text-muted"{% endif %}>GIF Paylaşma</li>
-        <li{% if progress.can_share_photo %} class="text-success"{% else %} class="text-muted"{% endif %}>Fotoğraf Paylaşma</li>
-        <li{% if progress.can_share_audio %} class="text-success"{% else %} class="text-muted"{% endif %}>Ses Paylaşma</li>
-        <li{% if progress.can_share_video %} class="text-success"{% else %} class="text-muted"{% endif %}>Video Paylaşma</li>
-        <li{% if progress.can_spin_wheel %} class="text-success"{% else %} class="text-muted"{% endif %}>Çarkı Çevirme</li>
-        <li{% if progress.can_choose_reward %} class="text-success"{% else %} class="text-muted"{% endif %}>Ödül Seçme</li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- Grup Bilgileri -->
-  <div class="card mt-3">
-    <div class="card-body">
-      <h6>Grup Bilgileri</h6>
-      <p>Grup: {{ user.group.name }}</p>
-      <p>Grup Seviyesi: {{ group_level }}</p>
-      <p>Grup Toplam Puanı: {{ group_progress }}</p>
-    </div>
-  </div>
-
-  <!-- Grup İçi Sıralama -->
-  <div class="card mt-3">
-    <div class="card-body">
-      <h6>Grup İçi Sıralama</h6>
-      <p>Sıralamanız: #{{ user_ranking_in_group }} / {{ total_group_members }}</p>
-    </div>
-  </div>
-
-  <!-- Takım Bilgileri -->
-  {% if user.teams.exists %}
-  <div class="card mt-3">
-    <div class="card-body">
-      <h6>Takım Bilgileri</h6>
-      {% for team in user.teams.all %}
-      <p>Takım: {{ team.name }}</p>
-      <p>Takım Üye Sayısı: {{ team.members.count }}</p>
-      {% endfor %}
-    </div>
-  </div>
   {% endif %}
 
-  <!-- Şifre Değiştir -->
+  <!-- Açılan Özellikler - Sadece özellikli gruplarda (A, B, C, D) göster -->
+  {% if group_features.has_features and feature_details %}
+    <div class="card mt-3">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-unlock-alt mr-2"></i> Açılan Özellikler</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-group">
+          {% for feature in feature_details %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                {% if feature.is_unlocked %}
+                  <i class="fas fa-check-circle text-success mr-2"></i>
+                  <span class="font-weight-bold">{{ feature.name }}</span>
+                {% else %}
+                  <i class="fas fa-lock text-secondary mr-2"></i>
+                  <span class="text-muted text-decoration-line-through">{{ feature.name }}</span>
+                {% endif %}
+              </div>
+              
+              <div>
+                {% if feature.is_unlocked %}
+                  <span class="badge badge-success">Açık</span>
+                {% else %}
+                  <span class="badge badge-warning">
+                    Seviye {{ feature.required_level }} ({{ feature.required_points }} puan) gerekli
+                  </span>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if group_features.has_features %}
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6>{% if user.team %}Takım Bilgileri{% else %}Grup Bilgileri{% endif %}</h6>
+        
+        {% if user.team %}
+          <p><i class="fas fa-users mr-2"></i> Takım: <span class="badge badge-primary">{{ user.team.name }}</span></p>
+          <p><i class="fas fa-users-cog mr-2"></i> Grup: {{ user.group.get_name_display }}</p>
+          <p><i class="fas fa-user-friends mr-2"></i> Takım Üye Sayısı: {{ user.team.get_member_count }}</p>
+          <p><i class="fas fa-trophy mr-2"></i> Takım Toplam Puanı: {{ user.team.get_total_points }}</p>
+        {% else %}
+          <p><i class="fas fa-users-cog mr-2"></i> Grup: {{ user.group.get_name_display }}</p>
+          <p><i class="fas fa-signal mr-2"></i> Grup Seviyesi: {{ group_level }}</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
   <div class="card mt-3">
     <div class="card-body">
       <a href="{% url 'password_change' %}" class="btn btn-primary">Şifreyi Değiştir</a>

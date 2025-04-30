@@ -8,12 +8,29 @@
 <div class="container mt-4">
     <h2 class="mb-3">Gönderiler</h2>
     <a href="{% url 'post_create' %}" class="btn btn-primary mb-4">Yeni Gönderi</a>
-
+    {% if messages %}
+    <div class="row">
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">       
+                {{ message }}
+                {% if "takip anketi" in message.message|lower %}
+                    <a href="{% url 'second_survey' %}" class="btn btn-success ml-3">Takip Anketini Doldur</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
     {% for post in posts %}
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between">
             <div>
-                <strong>{{ post.user.username }}</strong><br>
+                {% if post.user.team and post.user.group.name in 'CDF' %}
+                    <strong>{{ post.user.team.name }}</strong><br>
+                {% else %}
+                    <strong>{{ post.user.username }}</strong><br>
+                {% endif %}
                 <small class="text-muted">{{ post.created_at|date:"d M Y H:i" }}</small>
             </div>
             <div>
@@ -30,12 +47,11 @@
         </div>
         <div class="card-body" style="
             {% if post.is_bold %}font-weight: bold;{% endif %}
-            {% if post.text_color %}color: {{ post.text_color }};{% endif %}
-            {% if post.bg_color %}background-color: {{ post.bg_color }};{% endif %}
+            /* {% if post.text_color %}color: {{ post.text_color }};{% endif %} */
+            /* {% if post.bg_color %}background-color: {{ post.bg_color }};{% endif %} */
         ">
-            <p>{{ post.content|truncatewords:30 }}</p>
-            {% if post.media %}
-                <!-- Basit kontrol -->
+    <p>{{ post.content|truncatewords:30 }}</p>
+    {% if post.media %}
                 {% if post.media.url|lower|endswith:".jpg" or post.media.url|endswith:".png" or post.media.url|endswith:".jpeg" %}
                     <img src="{{ post.media.url }}" alt="Görsel" class="img-fluid rounded">
                 {% elif post.media.url|endswith:".mp4" %}
@@ -45,7 +61,29 @@
                     </video>
                 {% endif %}
             {% endif %}
-            
+            <hr>
+            <div class="d-flex justify-content-between">
+                <div class="post-actions">
+                    <button class="btn btn-sm like-button {% if post.user_liked %}btn-success{% else %}btn-outline-success{% endif %}" 
+                            data-post-id="{{ post.id }}" 
+                            data-action="like">
+                        <i class="fas fa-thumbs-up"></i> 
+                        <span class="like-count">{{ post.like_count }}</span>
+                    </button>
+                    
+                    <button class="btn btn-sm dislike-button {% if post.user_disliked %}btn-danger{% else %}btn-outline-danger{% endif %}" 
+                            data-post-id="{{ post.id }}" 
+                            data-action="dislike">
+                        <i class="fas fa-thumbs-down"></i> 
+                        <span class="dislike-count">{{ post.dislike_count }}</span>
+                    </button>
+                    
+                    <button class="btn btn-sm btn-info">
+                        <i class="fas fa-comments"></i> {{ post.comment_count }}
+                    </button>
+                </div>
+                
+            </div>
             <hr>
              {% if post.top_comments %}
         <div class="comment-section mb-2">
@@ -74,4 +112,170 @@
     <p class="text-center text-muted">Henüz paylaşım yok.</p>
     {% endfor %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const likeButtons = document.querySelectorAll('.like-button');
+    const dislikeButtons = document.querySelectorAll('.dislike-button');
+    
+    likeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            handleLikeAction(this, 'like');
+        });
+    });
+    
+    dislikeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            handleLikeAction(this, 'dislike');
+        });
+    });
+    
+    function handleLikeAction(button, action) {
+        const postId = button.getAttribute('data-post-id');
+        const token = '{{ csrf_token }}';
+        
+        fetch('{% url 'ajax_like_post' %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: `post_id=${postId}&like_type=${action}&csrfmiddlewaretoken=${token}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateLikeUI(postId, action, data);
+                showNotification(data.message);
+                checkPendingStatus(postId, data.has_pending);
+            } else {
+                console.error('Hata:', data.message);
+                showNotification(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Hata:', error);
+            showNotification('İşlem sırasında bir hata oluştu.', 'danger');
+        });
+    }
+    
+    function updateLikeUI(postId, actionType, data) {
+        const likeButton = document.querySelector(`.like-button[data-post-id="${postId}"]`);
+        const dislikeButton = document.querySelector(`.dislike-button[data-post-id="${postId}"]`);
+        const likeCount = likeButton.querySelector('.like-count');
+        const dislikeCount = dislikeButton.querySelector('.dislike-count');
+        
+        // Beğeni sayılarını güncelle
+        likeCount.textContent = data.like_count;
+        dislikeCount.textContent = data.dislike_count;
+        
+        // Alternatif gösterim alanlarını da güncelle (varsa)
+        const altLikeCountElements = document.querySelectorAll(`.post-${postId}-like-count`);
+        const altDislikeCountElements = document.querySelectorAll(`.post-${postId}-dislike-count`);
+        
+        altLikeCountElements.forEach(el => {
+            el.textContent = data.like_count;
+        });
+        
+        altDislikeCountElements.forEach(el => {
+            el.textContent = data.dislike_count;
+        });
+        
+        // Butonların görünümünü güncelle
+        if (actionType === 'like') {
+            if (data.action === 'added' || data.action === 'changed') {
+                likeButton.classList.remove('btn-outline-success');
+                likeButton.classList.add('btn-success');
+                dislikeButton.classList.remove('btn-danger');
+                dislikeButton.classList.add('btn-outline-danger');
+            } else {
+                likeButton.classList.remove('btn-success');
+                likeButton.classList.add('btn-outline-success');
+            }
+        } else {
+            if (data.action === 'added' || data.action === 'changed') {
+                dislikeButton.classList.remove('btn-outline-danger');
+                dislikeButton.classList.add('btn-danger');
+                likeButton.classList.remove('btn-success');
+                likeButton.classList.add('btn-outline-success');
+            } else {
+                dislikeButton.classList.remove('btn-danger');
+                dislikeButton.classList.add('btn-outline-danger');
+            }
+        }
+    }
+    
+    // Onay bekleyen beğeni olduğunu göster
+    function checkPendingStatus(postId, hasPending) {
+        let pendingMsgEl = document.getElementById(`pending-message-${postId}`);
+        
+        if (hasPending) {
+            // Eğer onay bekliyor mesajı yoksa, oluştur
+            if (!pendingMsgEl) {
+                const postCard = document.querySelector(`.card[data-post-id="${postId}"]`);
+                if (postCard) {
+                    const actionsDiv = postCard.querySelector('.post-actions');
+                    if (actionsDiv) {
+                        pendingMsgEl = document.createElement('div');
+                        pendingMsgEl.id = `pending-message-${postId}`;
+                        pendingMsgEl.className = 'alert alert-info mt-2 mb-0 py-1';
+                        pendingMsgEl.innerHTML = '<small><i class="fas fa-info-circle"></i> Beğeniniz moderatör onayı bekliyor.</small>';
+                        actionsDiv.appendChild(pendingMsgEl);
+                    }
+                }
+            }
+        } else {
+            // Eğer onay bekleyen beğeni yoksa ve mesaj varsa, kaldır
+            if (pendingMsgEl) {
+                pendingMsgEl.remove();
+            }
+        }
+    }
+    
+    // Bildirim gösterme
+    function showNotification(message, type = 'success') {
+        const container = document.querySelector('.container');
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = `alert alert-${type} alert-dismissible fade show notification-alert`;
+        notificationDiv.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        
+        // Notification'ı mevcut container'ın başına ekle
+        if (container) {
+            container.prepend(notificationDiv);
+        } else {
+            document.body.prepend(notificationDiv);
+        }
+        
+        // 5 saniye sonra otomatik kapat
+        setTimeout(() => {
+            notificationDiv.classList.remove('show');
+            setTimeout(() => {
+                notificationDiv.remove();
+            }, 500);
+        }, 5000);
+    }
+});
+</script>
+
+<style>
+.notification-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    max-width: 400px;
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
 {% endblock %}

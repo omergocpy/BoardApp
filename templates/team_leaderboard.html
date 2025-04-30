@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Takım Sıralaması{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ group.get_name_display }} Takım Sıralaması</h2>
+    
+    {% if user_team %}
+    <div class="alert alert-info">
+        <strong>Takımınız:</strong> {{ user_team.name }} - 
+        <strong>Sıralama:</strong> {{ user_team_rank }}. sırada - 
+        <strong>Toplam Puan:</strong> {{ user_team.get_total_points }}
+    </div>
+    {% endif %}
+    
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Takım Sıralaması</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th>Takım</th>
+                            <th>Toplam Puan</th>
+                            <th>Üye Sayısı</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in team_leaderboard %}
+                        <tr {% if user_team == item.team %}class="table-success"{% endif %}>
+                            <td>{{ item.rank }}</td>
+                            <td>{{ item.team.name }}</td>
+                            <td>{{ item.points }}</td>
+                            <td>{{ item.team.get_member_count }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4">Henüz sıralama bilgisi bulunmuyor.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,39 @@
 from django import forms
-from .models import CustomUser, RegistrationCode
+from .models import CustomUser, RegistrationCode, InitialSurvey,  LIKERT_CHOICES
 
+class SurveyResponseForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.questions = kwargs.pop('questions', InitialSurvey.objects.filter(is_active=True))
+        super(SurveyResponseForm, self).__init__(*args, **kwargs)
+        
+        for question in self.questions:
+            field_name = f'question_{question.id}'
+            self.fields[field_name] = forms.TypedChoiceField(
+                label=question.question,
+                choices=LIKERT_CHOICES,
+                coerce=int,
+                widget=forms.RadioSelect(attrs={
+                    'class': 'form-check-input',
+                    'required': 'required'
+                }),
+                required=True,
+                error_messages={'required': 'Lütfen bu soruyu cevaplayınız.'}
+            )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        missing_answers = []
+        
+        for question in self.questions:
+            field_name = f'question_{question.id}'
+            if field_name not in cleaned_data:
+                missing_answers.append(question.question)
+        
+        if missing_answers:
+            raise forms.ValidationError("Lütfen tüm soruları cevaplayınız.")
+        
+        return cleaned_data
+    
 class RegisterForm(forms.ModelForm):
     registration_code = forms.CharField(
         label='Kayıt Kodu', 

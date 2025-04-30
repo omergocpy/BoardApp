@@ -11,7 +11,8 @@ from .views import (
     dislike_comment_view,
     poll_vote_view,
     poll_results_json,
-    group_leaderboard_view
+    group_leaderboard_view,
+    ajax_like_post_view
 )
 
 urlpatterns = [
@@ -36,4 +37,7 @@ urlpatterns = [
 
     # Grup / Kullanıcı Liderlik Tablosu
     path('leaderboard/', group_leaderboard_view, name='group_leaderboard'),
+    
+    path('ajax/like-post/', ajax_like_post_view, name='ajax_like_post'),
+
 ]

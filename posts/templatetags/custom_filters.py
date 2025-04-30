@@ -1,6 +1,5 @@
 from django import template
 
-# Şablon filtrelerini kaydetmek için bir Template Library oluşturuluyor.
 register = template.Library()
 
 # `endswith` filtresi, bir stringin belirtilen bir son ekle bitip bitmediğini kontrol eder.
@@ -29,3 +28,10 @@ def force_int(value):
         return int(value)
     except (ValueError, TypeError):
         return 0
+
+
+@register.filter
+def get_item(dictionary, key):
+    if dictionary is None:
+        return None
+    return dictionary.get(key)
