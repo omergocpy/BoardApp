@@ -58,10 +58,19 @@ class RegisterForm(forms.ModelForm):
         label='Şifreyi Tekrar Gir', 
         widget=forms.PasswordInput(attrs={'class': 'form-control mb-3', 'placeholder': 'Şifreyi Tekrar Gir'})
     )
+    
+    # KVKK ve Onam Formu onayı için alan ekleme
+    agree_to_terms = forms.BooleanField(
+        required=True,
+        label='KVKK ve Onam Formunu okudum ve kabul ediyorum',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        error_messages={'required': 'Devam etmek için KVKK ve Onam Formunu onaylamanız gerekmektedir.'}
+    )
 
     class Meta:
         model = CustomUser
-        fields = ['registration_code', 'registration_password', 'gender', 'avatar', 'password1', 'password2']
+        fields = ['registration_code', 'registration_password', 'gender', 'avatar', 'password1', 'password2', 'agree_to_terms']
+
 
     def clean_registration_code(self):
         code = self.cleaned_data.get('registration_code')

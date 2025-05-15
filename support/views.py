@@ -8,7 +8,7 @@ from .forms import SupportRequestForm, MessageForm
 def support_request_list(request):
     # Giriş yapan kullanıcının taleplerini çek
     requests = SupportRequest.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'myapp/support_request_list.html', {'requests': requests})
+    return render(request, 'support_request_list.html', {'requests': requests})
 
 @login_required
 def support_request_create(request):
@@ -22,14 +22,14 @@ def support_request_create(request):
             return redirect('support_request_list')
     else:
         form = SupportRequestForm()
-    return render(request, 'myapp/support_request_form.html', {'form': form})
+    return render(request, 'support_request_form.html', {'form': form})
 
 @login_required
 def support_request_detail(request, pk):
     support_request = get_object_or_404(SupportRequest, pk=pk)
 
     # Sadece talep sahibi (veya yetkili) görebilsin diye kontrol
-    if support_request.user != request.user:
+    if support_request.user != request.user and not request.user.is_staff:
         return redirect('support_request_list')  # veya 403 forbidden
 
     if request.method == 'POST':
@@ -45,7 +45,7 @@ def support_request_detail(request, pk):
 
     messages_qs = support_request.messages.all().order_by('created_at')
 
-    return render(request, 'myapp/support_request_detail.html', {
+    return render(request, 'support_request_detail.html', {
         'support_request': support_request,
         'messages': messages_qs,
         'message_form': message_form

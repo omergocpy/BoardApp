@@ -10,7 +10,7 @@ Kayıt Ol
     <div class="card">
         <div class="card-body">
             <div class="progress mb-4">
-                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">Adım 1</div>
+                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 16.6%;" aria-valuenow="16.6" aria-valuemin="0" aria-valuemax="100">Adım 1</div>
             </div>
 
             <form method="post">
@@ -45,17 +45,35 @@ Kayıt Ol
                 <div id="step4" class="step">
                     <h5 class="card-title text-center">Avatar Seç</h5>
                     <div class="row text-center">
-                        <div class="col-6">
+                        <div class="col-4 col-md-2 mb-3">
                             <img src="{% static 'images/avatar1.png' %}" class="profile-img" alt="avatar1.png" onclick="selectAvatar(this)">
                         </div>
-                        <div class="col-6">
+                        <div class="col-4 col-md-2 mb-3">
                             <img src="{% static 'images/avatar2.png' %}" class="profile-img" alt="avatar2.png" onclick="selectAvatar(this)">
                         </div>
-                        <div class="col-6">
+                        <div class="col-4 col-md-2 mb-3">
                             <img src="{% static 'images/avatar3.png' %}" class="profile-img" alt="avatar3.png" onclick="selectAvatar(this)">
                         </div>
-                        <div class="col-6">
+                        <div class="col-4 col-md-2 mb-3">
                             <img src="{% static 'images/avatar4.png' %}" class="profile-img" alt="avatar4.png" onclick="selectAvatar(this)">
+                        </div>
+                        <div class="col-4 col-md-2 mb-3">
+                            <img src="{% static 'images/avatar5.png' %}" class="profile-img" alt="avatar5.png" onclick="selectAvatar(this)">
+                        </div>
+                        <div class="col-4 col-md-2 mb-3">
+                            <img src="{% static 'images/avatar6.png' %}" class="profile-img" alt="avatar6.png" onclick="selectAvatar(this)">
+                        </div>
+                        <div class="col-4 col-md-2 mb-3">
+                            <img src="{% static 'images/avatar7.png' %}" class="profile-img" alt="avatar7.png" onclick="selectAvatar(this)">
+                        </div>
+                        <div class="col-4 col-md-2 mb-3">
+                            <img src="{% static 'images/avatar8.png' %}" class="profile-img" alt="avatar8.png" onclick="selectAvatar(this)">
+                        </div>
+                        <div class="col-4 col-md-2 mb-3">
+                            <img src="{% static 'images/avatar9.png' %}" class="profile-img" alt="avatar9.png" onclick="selectAvatar(this)">
+                        </div>
+                        <div class="col-4 col-md-2 mb-3">
+                            <img src="{% static 'images/avatar10.png' %}" class="profile-img" alt="avatar10.png" onclick="selectAvatar(this)">
                         </div>
                     </div>
                     {{ form.avatar }}
@@ -72,7 +90,53 @@ Kayıt Ol
                     {% if form.password2.errors %}
                         <div class="text-danger">{{ form.password2.errors }}</div>
                     {% endif %}
-                    <button class="btn btn-success btn-block" type="submit">Tamamla</button>
+                    <button class="btn btn-primary btn-block" type="button" onclick="nextStep(6)">İleri</button>
+                </div>
+
+                <!-- KVKK ve Onam Formu Adımı -->
+                <div id="step6" class="step">
+                    <h5 class="card-title text-center">KVKK ve Onam Formu</h5>
+                    <div class="form-group">
+                        <div class="card bg-light">
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                                <h6>Kişisel Verilerin Korunması Kanunu Kapsamında Aydınlatma Metni</h6>
+                                <p>Aşağıda yer alan içerik, araştırma projemizin katılımcılarının haklarını korumak ve kişisel verilerinin işlenmesi konusunda bilgilendirilmesi amacıyla hazırlanmıştır.</p>
+                                
+                                <p>6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında, kişisel verileriniz veri sorumlusu olarak [Araştırma Kurumu/Üniversite Adı] tarafından aşağıda açıklanan kapsamda işlenebilecektir.</p>
+                                
+                                <h6>Kişisel Verilerin İşlenme Amacı</h6>
+                                <p>Bu araştırma projesi kapsamında toplanan kişisel verileriniz, bilimsel araştırma amacıyla ve sadece araştırma sonuçlarının değerlendirilmesi için kullanılacaktır. Verileriniz anonim hale getirilerek işlenecek ve araştırma sonuçları bilimsel yayınlarda kullanılabilecektir.</p>
+                                
+                                <h6>Kişisel Veri Toplama Yöntemi ve Hukuki Sebebi</h6>
+                                <p>Kişisel verileriniz, bu araştırma platformu aracılığıyla elektronik ortamda toplanmaktadır. Verileriniz KVKK'nın 5. maddesinde belirtilen "açık rızanın alınması" hukuki sebebine dayanarak işlenmektedir.</p>
+                                
+                                <h6>Kişisel Verilerin Aktarılması</h6>
+                                <p>Kişisel verileriniz, araştırma ekibi dışında üçüncü kişilerle paylaşılmayacaktır. Araştırma sonuçları bilimsel yayınlarda kullanılması durumunda, veriler anonim hale getirilerek sunulacaktır.</p>
+                                
+                                <h6>KVKK Kapsamındaki Haklarınız</h6>
+                                <p>KVKK'nın 11. maddesi uyarınca, kişisel verilerinizle ilgili olarak aşağıdaki haklara sahipsiniz:</p>
+                                <ul>
+                                    <li>Kişisel verilerinizin işlenip işlenmediğini öğrenme,</li>
+                                    <li>Kişisel verileriniz işlenmişse buna ilişkin bilgi talep etme,</li>
+                                    <li>Kişisel verilerinizin işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme,</li>
+                                    <li>Kişisel verilerinizin eksik veya yanlış işlenmiş olması hâlinde bunların düzeltilmesini isteme,</li>
+                                    <li>Kişisel verilerinizin silinmesini veya yok edilmesini isteme,</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check mt-3">
+                        {{ form.agree_to_terms }}
+                        <label class="form-check-label" for="{{ form.agree_to_terms.id_for_label }}">
+                            {{ form.agree_to_terms.label }}
+                        </label>
+                        {% if form.agree_to_terms.errors %}
+                            <div class="text-danger">{{ form.agree_to_terms.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <button class="btn btn-success btn-block mt-3" type="submit">Tamamla</button>
                 </div>
             </form>
         </div>
@@ -89,9 +153,9 @@ Kayıt Ol
         });
         document.getElementById('step' + step).classList.add('active');
 
-        // İlerleme çubuğunu güncelle
+        // İlerleme çubuğunu güncelle (şimdi 6 adım var)
+        var stepPercentage = (step / 6) * 100;
         var progressBar = document.getElementById('progress-bar');
-        var stepPercentage = (step / 5) * 100;
         progressBar.style.width = stepPercentage + '%';
         progressBar.setAttribute('aria-valuenow', stepPercentage);
         progressBar.textContent = 'Adım ' + step;

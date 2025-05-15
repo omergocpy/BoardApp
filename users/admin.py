@@ -1,8 +1,22 @@
 from django.contrib import admin
-from .models import CustomUser, RegistrationCode, Group, Evaluation, SurveyCompletion, InitialSurvey, UserSurveyResponse, Team
+from .models import CustomUser, RegistrationCode, Group, Evaluation, SurveyCompletion, InitialSurvey, UserSurveyResponse, Team, UserSession
 from django.utils.html import format_html
 from django.db.models import Avg
 
+@admin.register(UserSession)
+class UserSessionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'login_time', 'logout_time', 'duration_str', 'ip_address', 'get_browser')
+    list_filter = ('login_time', 'logout_time', 'user')
+    search_fields = ('user__username', 'ip_address')
+    date_hierarchy = 'login_time'
+    
+    def get_browser(self, obj):
+        """Tarayıcı bilgisini kısaltılmış olarak göster"""
+        if obj.user_agent:
+            # Sadece ilk 30 karakterini göster
+            return obj.user_agent[:30] + "..." if len(obj.user_agent) > 30 else obj.user_agent
+        return "-"
+    get_browser.short_description = "Tarayıcı"
 
 @admin.register(SurveyCompletion)
 class SurveyCompletionAdmin(admin.ModelAdmin):
@@ -27,10 +41,45 @@ class TeamAdmin(admin.ModelAdmin):
     
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'gender', 'registration_code')
-    list_filter = ('gender', 'registration_code')
+    list_display = ('username', 'email', 'gender', 'registration_code', 'get_total_sessions', 'get_total_time')
+    list_filter = ('gender', 'registration_code', 'is_active')
     search_fields = ('username', 'email', 'registration_code')
-
+    
+    def get_total_sessions(self, obj):
+        """Kullanıcının toplam oturum sayısı"""
+        return obj.sessions.count()
+    get_total_sessions.short_description = "Toplam Oturum"
+    
+    def get_total_time(self, obj):
+        """Kullanıcının toplam sistemde kalma süresi"""
+        from django.db.models import Sum, F, ExpressionWrapper, fields
+        from django.db.models.functions import Coalesce
+        
+        # Tamamlanan oturumların sürelerini topla
+        completed_sessions = obj.sessions.filter(logout_time__isnull=False)
+        
+        if not completed_sessions.exists():
+            return "0s 0d 0sn"
+        
+        # Django ORM ile doğrudan hesaplama
+        duration = completed_sessions.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F('logout_time') - F('login_time'),
+                    output_field=fields.DurationField()
+                )
+            )
+        )['total']
+        
+        if duration:
+            seconds = duration.total_seconds()
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            secs = int(seconds % 60)
+            return f"{hours}s {minutes}d {secs}sn"
+        return "0s 0d 0sn"
+    get_total_time.short_description = "Toplam Süre"
+    
 
 @admin.register(RegistrationCode)
 class RegistrationCodeAdmin(admin.ModelAdmin):

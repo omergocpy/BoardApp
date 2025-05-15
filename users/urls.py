@@ -12,4 +12,4 @@ urlpatterns = [
     path('logout/', logout_view, name='logout'), 
     path('survey/', survey_view, name='initial_survey'),
     path('second-survey/', second_survey_view, name='second_survey'),
-    ]
+]

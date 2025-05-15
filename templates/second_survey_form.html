@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Takip Anketi{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3 class="mb-0">Takip Anketi</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <p class="mb-0">
+                            Bu bölümde bireylerin davranışlarıyla ilişkin ifadeler yer almaktadır. Lütfen bu ifadelerin çalışma ortamınıza ve size ne derecede uyup uymadığını düşünerek ifadeye katılma derecenizi "kesinlikle katılmıyorum"dan "tamamen katılıyorum"a uzanan ölçekler üzerinde değerlendiriniz.
+                        </p>
+                    </div>
+                    
+                    <form method="post" class="mt-4" id="surveyForm">
+                        {% csrf_token %}
+                        
+                        <div class="survey-questions">
+                            {% for question in questions %}
+                                <div class="question-item mb-4 p-3 border rounded">
+                                    <h5 class="mb-3">{{ forloop.counter }}. {{ question.question }}</h5>
+                                    
+                                    <div class="likert-container">
+                                        <div class="likert-labels d-flex justify-content-between mb-2">
+                                            <span class="small text-muted">Kesinlikle katılmıyorum</span>
+                                            <span class="small text-muted">Kesinlikle katılıyorum</span>
+                                        </div>
+                                        
+                                        <div class="likert-options">
+                                            <div class="d-flex justify-content-between">
+                                                {% for value, text in LIKERT_CHOICES %}
+                                                <div class="likert-option text-center">
+                                                    <input type="radio" 
+                                                           name="question_{{ question.id }}" 
+                                                           id="q{{ question.id }}_{{ value }}" 
+                                                           value="{{ value }}" 
+                                                           class="form-check-input" 
+                                                           required>
+                                                    <label for="q{{ question.id }}_{{ value }}" class="d-block mt-1">
+                                                        <span class="badge rounded-pill bg-secondary">{{ value }}</span>
+                                                    </label>
+                                                    <div class="small text-center d-md-none">{{ text }}</div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            
+                                            <div class="likert-descriptions d-none d-md-flex justify-content-between mt-2">
+                                                {% for value, text in LIKERT_CHOICES %}
+                                                <div class="likert-description text-center" style="flex: 1;">
+                                                    <small>{{ text }}</small>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if user_responses and user_responses|get_item:question.id %}
+                                    <div class="mt-3 p-2 bg-light rounded">
+                                        <p class="mb-0 small text-muted">
+                                            <i class="fas fa-info-circle"></i> İlk ankette bu soruya verdiğiniz cevap: 
+                                            <strong>{{ user_responses|get_item:question.id }} - 
+                                                {% for val, txt in LIKERT_CHOICES %}
+                                                    {% if val == user_responses|get_item:question.id %}{{ txt }}{% endif %}
+                                                {% endfor %}
+                                            </strong>
+                                        </p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">Anketi Tamamla</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Anket şablonu için stiller */
+    .question-item {
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        transition: all 0.3s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .question-item:hover {
+        background-color: #f0f7ff;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .likert-option {
+        flex: 1;
+        position: relative;
+        margin: 0 5px;
+    }
+    
+    .likert-option input[type="radio"] {
+        transform: scale(1.2);
+        margin: 0 auto;
+        display: block;
+    }
+    
+    .likert-option label {
+        cursor: pointer;
+    }
+    
+    .likert-description {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+    
+    /* Mobil görünüm için responsive ayarlar */
+    @media (max-width: 768px) {
+        .likert-descriptions {
+            display: none;
+        }
+        
+        .likert-options .d-flex {
+            flex-wrap: wrap;
+        }
+        
+        .likert-option {
+            flex: 0 0 33%;
+            margin-bottom: 10px;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('surveyForm');
+    
+    form.addEventListener('submit', function(e) {
+        const questions = document.querySelectorAll('.question-item');
+        let allAnswered = true;
+        
+        questions.forEach(function(question) {
+            // Her soru için tüm radio butonları bul
+            const name = question.querySelector('input[type="radio"]').name;
+            const checked = question.querySelector(`input[name="${name}"]:checked`);
+            
+            // Eğer hiçbir seçenek işaretlenmemişse
+            if (!checked) {
+                allAnswered = false;
+                question.style.border = '2px solid #dc3545';
+                question.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                question.style.border = '';
+            }
+        });
+        
+        if (!allAnswered) {
+            e.preventDefault();
+            
+            // Uyarı mesajı göster
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.innerHTML = '<p><strong>Lütfen tüm soruları cevaplayınız.</strong></p>';
+            
+            // Eğer zaten bir uyarı varsa, tekrar ekleme
+            if (!document.querySelector('.alert-danger')) {
+                form.parentNode.insertBefore(alertDiv, form);
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

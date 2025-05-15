@@ -1,4 +1,6 @@
 {% load static %}
+{% load custom_filters %}
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -176,6 +178,8 @@
         padding: 2px 5px;
         border-radius: 10px;
     }
+
+  
     </style>
 </head>
 <body>
@@ -194,32 +198,51 @@
             <ul class="navbar-nav ml-auto">
                 {% if not request.user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/register">Kayıt Ol</a>
+                        <a class="nav-link" href="{% url 'register' %}">Kayıt Ol</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/login">Giriş Yap</a>
+                        <a class="nav-link" href="{% url 'login' %}">Giriş Yap</a>
                     </li>
                 {% else %}
                     <li class="nav-item dropdown">
+
+                        {% if request.user|has_second_survey_due %}
+                            <a class="dropdown-item" href="{% url 'second_survey' %}">Takip Anketi</a>
+                        {% endif %}
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            {% if group_features.has_leaderboard or group_features.has_progress_bar %}
-                            <i class="fas fa-trophy"></i> Seviye: {{ level }} | Puan: {{ points }}
-                          {% else %}
-                            <i class="fas fa-user"></i> {{ request.user.username }}
-                          {% endif %}
-                        </span>
+                            {% if show_leaderboard %}
+                                <i class="fas fa-trophy"></i> Sıralama: {{ ranking_info.rank }} | Puan: {{ points }}
+                            {% elif show_progress_bar %}
+                                <i class="fas fa-signal"></i> Seviye: {{ level }} | Puan: {{ points }}
+                            {% else %}
+                                <i class="fas fa-user"></i> {{ request.user.username }}
+                            {% endif %}
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
-                            <a class="dropdown-item" href="/profil">Profil</a>
-                            <a class="dropdown-item" href="/logout">Çıkış Yap</a>
-                            <a class="dropdown-item" href="{{ leaderboard_url }}" class="footer-link">Sıralama</a>
-
-                            {% if is_admin %}
-                            <a class="dropdown-item" href="/admin">Admin Panel</a>
+                            <a class="dropdown-item" href="{% url 'profil' %}">Profil</a>
+                            <a class="dropdown-item" href="{% url 'logout' %}">Çıkış Yap</a>
+                            {% if leaderboard_url %}
+                                <a class="dropdown-item" href="{{ leaderboard_url }}">Sıralama</a>
                             {% endif %}
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <i class="fas fa-bell"></i>
+                                    <span class="badge badge-danger" id="notifications-count"></span>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-right notification-menu" aria-labelledby="notificationsDropdown">
+        
+                                    <div class="notification-list" id="notification-list">
+                                        <div class="text-center p-3">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="sr-only">Yükleniyor...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
                         </div>
                     </li>
-
                 {% endif %}
             </ul>
         </div>
@@ -230,32 +253,32 @@
     </div>
 
     <!-- Footer -->
-    {% if request.user.is_authenticated %}
-    <div class="footer">
-        <a href="/home" class="footer-link">
-            <i class="fas fa-home"></i>
-            <span>Anasayfa</span>
+{% if request.user.is_authenticated %}
+<div class="footer">
+    <a href="{% url 'post_list' %}" class="footer-link">
+        <i class="fas fa-home"></i>
+        <span>İçerikler</span>
+    </a>
+    <div class="dropdown">
+        <a href="#" class="footer-link dropdown-toggle" id="footerProfileDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <i class="fas fa-user"></i>
+            <span>Hesabım</span>
         </a>
-        <div class="dropdown">
-            <a href="#" class="footer-link dropdown-toggle" id="footerProfileDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <i class="fas fa-user"></i>
-                <span>Hesabım</span>
-            </a>
-            <div class="dropdown-menu" aria-labelledby="footerProfileDropdown">
-                <a class="dropdown-item" href="/profil">Profil</a>
-                <a class="dropdown-item" href="{% url 'logout' %}">Çıkış Yap</a>
-            </div>
+        <div class="dropdown-menu" aria-labelledby="footerProfileDropdown">
+            <a class="dropdown-item" href="{% url 'profil' %}">Profil</a>
+            <a class="dropdown-item" href="{% url 'logout' %}">Çıkış Yap</a>
         </div>
-        <a href="/create" class="footer-link">
-            <i class="fas fa-plus-circle"></i>
-            <span>Paylaş</span>
-        </a>
-        <a href="/support/yeni-destek-talebi/" class="footer-link">
-            <i class="fas fa-life-ring"></i>
-            <span>Destek</span>
-        </a>
     </div>
-    {% endif %}
+    <a href="{% url 'post_create' %}" class="footer-link">
+        <i class="fas fa-plus-circle"></i>
+        <span>Paylaş</span>
+    </a>
+    <a href="{% url 'support_request_list' %}" class="footer-link">
+        <i class="fas fa-life-ring"></i>
+        <span>Destek</span>
+    </a>
+</div>
+{% endif %}
 
 <!-- jQuery (Tam Sürüm) -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -265,6 +288,83 @@
 
 <!-- Bootstrap JS -->
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    {% block scripts %}{% endblock %}
+    {% block scripts %}
+    <script>
+        // Bildirim sayısını periyodik olarak güncelle
+        function updateNotificationCount() {
+            fetch('{% url "get_notifications_count" %}')
+                .then(response => response.json())
+                .then(data => {
+                    const countElement = document.getElementById('notifications-count');
+                    if (data.count > 0) {
+                        countElement.textContent = data.count;
+                        countElement.style.display = 'inline';
+                    } else {
+                        countElement.style.display = 'none';
+                    }
+                });
+        }
+        
+        // Sayfa yüklendiğinde bildirim sayısını güncelle
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationCount();
+            
+            // Her 30 saniyede bir bildirim sayısını güncelle
+            setInterval(updateNotificationCount, 30000);
+            
+            // Bildirim menüsü açıldığında bildirimleri yükle
+            const notificationsDropdown = document.getElementById('notificationsDropdown');
+            notificationsDropdown.addEventListener('click', function() {
+                const notificationList = document.getElementById('notification-list');
+                
+                // Bildirim listesini AJAX ile getir
+                fetch('{% url "notifications_list" %}?ajax=1')
+                    .then(response => response.text())
+                    .then(html => {
+                        notificationList.innerHTML = html;
+                    });
+            });
+        });
+    </script>
+    {% endblock %}
+    <style>
+        .notification-menu {
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 8px 15px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .notification-item.unread {
+            background-color: #e8f4fd;
+        }
+        
+        .notification-time {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+        .notification-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 400px;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </body>
 </html>

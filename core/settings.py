@@ -9,15 +9,13 @@ SECRET_KEY = 'django-insecure-(^eqxpe@+hg+e9!@d8tanbdwg8z1xxc0nl0_)s#rh6jsv5pf24
 
 DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["boardapp.net", "www.boardapp.net", "127.0.0.1", "localhost"]
 
 CSRF_COOKIE_HTTPONLY = False 
 CSRF_COOKIE_SAMESITE = 'Lax'  
 
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = ['https://boardapp.net', 'http://127.0.0.1:8000']
-
-ALLOWED_HOSTS = []
 
 
 
@@ -29,6 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "notifications",
     "users",
     "pages",
     'posts',
@@ -37,7 +36,6 @@ INSTALLED_APPS = [
     "django_extensions",
     'django_celery_beat',
     'django_celery_results',
-
 ]
 
 MIDDLEWARE = [
@@ -46,6 +44,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.UserSessionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.AjaxRequestMiddleware', 
@@ -57,8 +56,12 @@ ROOT_URLCONF = 'core.urls'
 CELERY_RESULT_BACKEND = 'django-db'
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
-
+CELERY_BEAT_SCHEDULE = {
+    'check-stale-sessions': {
+        'task': 'users.tasks.check_and_close_stale_sessions',
+        'schedule': datetime.timedelta(minutes=30),  # Her 30 dakikada bir çalıştır
+    },
+}
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

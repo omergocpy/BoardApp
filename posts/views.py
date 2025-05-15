@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from users.utils import get_group_features
 
+
 @login_required(login_url='login')
 def ajax_like_post_view(request):
     """AJAX ile post beğen/beğenme işlemi"""
@@ -33,27 +34,27 @@ def ajax_like_post_view(request):
                 message = 'Beğeniniz kaldırıldı.'
             else:
                 existing_like.like_type = like_type
-                existing_like.approved = False  # Onay bekliyor olarak işaretle
-                existing_like.points_added = False  # Puanları sıfırla
+                existing_like.approved = False  # Otomatik onay
+                existing_like.points_added = False  # Yeni puan eklenecek
                 existing_like.save()
                 action = 'changed'
-                message = 'Beğeni tipiniz değiştirildi ve moderatör onayına gönderildi.'
+                message = 'Beğeni tipiniz değiştirildi. Moderatör Onayından Sonra Görüntülenecektir.'
         else:
             Like.objects.create(
                 post=post, 
                 user=request.user, 
                 like_type=like_type,
-                approved=False  # Yeni beğeniler onay bekliyor 
+                approved=False  # Otomatik onay
             )
             action = 'added'
-            message = 'Beğeniniz moderatör onayına gönderildi.'
+            message = 'Beğeniniz kaydedildi. Moderatör Onayından Sonra Görüntülenecektir.'
         
-        # Yeni beğeni sayılarını al (SADECE ONAYLANMIŞ beğeniler)
+        # Yeni beğeni sayılarını al
         like_count = post.likes.filter(like_type='like', approved=True).count()
         dislike_count = post.likes.filter(like_type='dislike', approved=True).count()
         
-        # Kullanıcının bekleyen beğenisi var mı kontrol et
-        has_pending = Like.objects.filter(post=post, user=request.user, approved=False).exists()
+        # Kullanıcının bekleyen beğenisi artık olmadığından False
+        has_pending = False
         
         return JsonResponse({
             'status': 'success',
@@ -66,7 +67,6 @@ def ajax_like_post_view(request):
         })
     
     return JsonResponse({'status': 'error', 'message': 'Geçersiz istek.'}, status=400)
-
 
 @login_required(login_url='login')  
 def post_list_view(request):
@@ -94,7 +94,6 @@ def post_list_view(request):
 
     return render(request, 'post_list.html', {'posts': posts})
 
-
 @login_required(login_url='login')  
 def post_create_view(request):
     progress, created = Progress.objects.get_or_create(user=request.user)
@@ -108,25 +107,45 @@ def post_create_view(request):
     if request.method == 'POST':
         form = PostForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            # Seviye kontrolü: post_type'ı alıp kapalı mı diye bakarız
+            # Seviye kontrolü
             post_type = form.cleaned_data.get('post_type')
-            print("DEBUG => post_type is:", post_type)  # Ekledik
-            if post_type == 'photo' and progress.level < 3:
-                messages.error(request, "Fotoğraf paylaşmak için seviye 3 gerekiyor.")
+            
+            # Kalın yazı için seviye 2 kontrolü
+            if form.cleaned_data.get('is_bold') and not progress.can_use_bold_text():
+                messages.error(request, "Kalın yazı kullanmak için seviye 2 gerekiyor.")
                 return redirect('post_create')
-            if post_type == 'video' and progress.level < 4:
-                messages.error(request, "Video paylaşmak için seviye 4 gerekiyor.")
+                
+            # Renkli yazı için seviye 3 kontrolü
+            if form.cleaned_data.get('text_color') and not progress.can_use_colored_text():
+                messages.error(request, "Renkli yazı kullanmak için seviye 3 gerekiyor.")
                 return redirect('post_create')
-            if post_type == 'poll' and progress.level < 5:
+                
+            # Arka plan rengi için seviye 4 kontrolü
+            if form.cleaned_data.get('bg_color') and not progress.can_use_background():
+                messages.error(request, "Arka plan rengi kullanmak için seviye 4 gerekiyor.")
+                return redirect('post_create')
+            
+            # Foto için seviye 6 kontrolü
+            if post_type == 'photo' and not progress.can_share_photo():
+                messages.error(request, "Fotoğraf paylaşmak için seviye 6 gerekiyor.")
+                return redirect('post_create')
+                
+            # Video için seviye 8 kontrolü
+            if post_type == 'video' and not progress.can_share_video():
+                messages.error(request, "Video paylaşmak için seviye 8 gerekiyor.")
+                return redirect('post_create')
+                
+            # Anket için seviye 5 kontrolü
+            if post_type == 'poll' and not progress.can_share_gif():
                 messages.error(request, "Anket oluşturmak için seviye 5 gerekiyor.")
                 return redirect('post_create')
 
-            post = form.save(commit=True)
+            post = form.save(commit=False)
             post.user = request.user
+            post.approved = False  # Otomatik onay
             post.save()
             
-            # Kategorideki ilk paylaşım bonusu ve yeni gönderi puanı kaldırıldı (admin onayı için)
-            messages.success(request, "Gönderiniz başarıyla oluşturuldu ve moderatör onayı için gönderildi.")
+            messages.success(request, "Gönderiniz başarıyla oluşturuldu. Moderatör Onayından Sonra Görüntülenecektir.")
             return redirect('post_list')
     else:
         form = PostForm(user=request.user)
@@ -135,8 +154,6 @@ def post_create_view(request):
         'form': form,
         'level': progress.level
     })
-
-
 @login_required(login_url='login')
 def post_detail_view(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -183,9 +200,9 @@ def post_detail_view(request, post_id):
                 comment = comment_form.save(commit=False)
                 comment.post = post
                 comment.user = request.user
-                comment.approved = False  # Moderatör onayı için bekletilecek
+                comment.approved = False  # Otomatik onay
                 comment.save()
-                messages.success(request, "Yorumunuz moderatör onayı için gönderildi.")
+                messages.success(request, "Yorumunuz kaydedildi. Moderatör Onayından Sonra Görüntülenecektir.")
                 return redirect('post_detail', post_id=post_id)
 
     return render(request, 'post_detail.html', {
@@ -205,7 +222,6 @@ def post_detail_view(request, post_id):
 
 @login_required(login_url='login')
 def poll_vote_view(request, post_id):
-    """Bir seçenek seçerek oy verir, tekrar oy kullanmayı engeller."""
     post = get_object_or_404(Post, id=post_id, post_type='poll')
     poll = getattr(post, 'poll', None)
     if not poll:
@@ -215,27 +231,25 @@ def poll_vote_view(request, post_id):
     # Seçenek doğrulama
     option = get_object_or_404(PollOption, id=option_id, poll=poll)
 
-    # 1) Kullanıcı zaten oy vermiş mi?
+    # Kullanıcı zaten oy vermiş mi?
     existing_vote = PollVote.objects.filter(poll=poll, user=request.user).first()
     if existing_vote:
         # Zaten bu ankete oy kullanmış
         messages.error(request, "Bu ankete zaten oy kullandınız!")
         return redirect('post_detail', post_id=post_id)
 
-    # 2) İlk kez oy veriyor => PollVote kaydı ekle
-    PollVote.objects.create(
+    # İlk kez oy veriyor => PollVote kaydı ekle
+    vote = PollVote.objects.create(
         poll=poll,
         user=request.user,
         option=option
     )
 
-    # 3) Seçilen seçenek oy sayısını 1 arttır
+    # Seçilen seçenek oy sayısını 1 arttır
     option.votes += 1
     option.save()
 
-    # 4) Puanlama işlemi kaldırıldı (moderatör onayı için)
-
-    messages.success(request, f"{option.text} seçeneğine oy verdiniz. Onay sonrası puan kazanacaksınız.")
+    messages.success(request, f"{option.text} seçeneğine oy verdiniz.")
     return redirect('post_detail', post_id=post_id)
 
 
@@ -271,19 +285,21 @@ def like_post_view(request, post_id):
             messages.success(request, "Beğeniniz kaldırıldı.")
         else:
             existing_like.like_type = like_type
-            existing_like.approved = False  # Onay bekliyor olarak işaretle
+            existing_like.approved = True  # Otomatik onay
+            existing_like.points_added = False  # Yeni puan eklenecek
             existing_like.save()
-            messages.success(request, "Beğeniniz güncellendi ve moderatör onayı için gönderildi.")
+            messages.success(request, "Beğeniniz güncellendi. Moderatör Onayından Sonra Görüntülenecektir.")
     else:
         Like.objects.create(
             post=post, 
             user=request.user, 
             like_type=like_type,
-            approved=False  # Onay bekliyor
+            approved=False  # Otomatik onay
         )
-        messages.success(request, "Beğeniniz kaydedildi ve moderatör onayı için gönderildi.")
+        messages.success(request, "Beğeniniz kaydedildi. Moderatör Onayından Sonra Görüntülenecektir.")
     
     return redirect('post_detail', post_id=post.id)
+
 
 @login_required(login_url='login')
 def rate_post_view(request, post_id):
@@ -300,10 +316,11 @@ def rate_post_view(request, post_id):
 
     rating, created = Rating.objects.get_or_create(post=post, user=request.user)
     rating.score = score
+    rating.approved = True  
+    rating.points_added = False  
     rating.save()
 
-    # Puanlama kaldırıldı (moderatör onayı için)
-    messages.success(request, f"{score} yıldız verdiniz. Moderatör onayı sonrası puan kazanacaksınız.")
+    messages.success(request, f"{score} yıldız verdiniz.")
     return redirect('post_detail', post_id=post.id)
 
 
@@ -316,9 +333,9 @@ def reply_comment_view(request, comment_id):
             user=request.user,
             content=request.POST.get('content'),
             parent=comment,
-            approved=False  # Varsayılan olarak onaylanmamış olarak işaretle
+            approved=True  # Otomatik onay
         )
-        messages.success(request, "Yanıtınız moderatör onayı için gönderildi.")
+        messages.success(request, "Yanıtınız kaydedildi.")
         return redirect('post_detail', post_id=comment.post.id)
 
 
@@ -341,7 +358,7 @@ def dislike_comment_view(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id, approved=True)
     if request.user in comment.dislikes.all():
         comment.dislikes.remove(request.user)
-        messages.success(request, "Yorum beğenmemeniz kaldırıldı.")
+        messages.success(request, "Yorum beğenmemeniz kaldırıldı. Moderatör Onayından Sonra Görüntülenecektir.")
     else:
         if request.user in comment.likes.all():
             comment.likes.remove(request.user)
@@ -349,15 +366,21 @@ def dislike_comment_view(request, comment_id):
         messages.success(request, "Yorumu beğenmediniz. Moderatör onayından sonra işleminiz görünecektir.")
     return redirect('post_detail', post_id=comment.post.id)
 
+
 @login_required(login_url='login')  
 def group_leaderboard_view(request):
     user = request.user
-    user_group = user.group
+    user_group = user.group  
+    
+    # Takım bazlı gruplarda takım liderlik tablosuna yönlendir
+    if user_group and user_group.name in ['C', 'D', 'F']:
+        return redirect('team_leaderboard')
     
     from users.utils import get_user_ranking_info
     ranking_info = get_user_ranking_info(user)
     
     from users.models import Progress
+    # Sadece aynı gruptaki kullanıcıları listele
     leaderboard = Progress.objects.filter(user__group=user_group).order_by('-points')
     
     return render(request, 'group_leaderboard.html', {

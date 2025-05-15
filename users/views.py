@@ -12,8 +12,39 @@ from .models import InitialSurvey, UserSurveyResponse, SurveyCompletion, LIKERT_
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import logout
-from .utils import get_group_features,  get_user_ranking_info
+from .utils import get_group_features,  get_user_ranking_info, assign_group_to_user_sequentially
 
+@login_required(login_url='login')
+def second_survey_view(request):
+    completion, created = SurveyCompletion.objects.get_or_create(user=request.user)
+    
+    if not completion.completed:
+        messages.info(request, "Önce ilk anketi tamamlamanız gerekiyor.")
+        return redirect('initial_survey')
+    
+    if completion.second_survey_completed:
+        messages.info(request, "Anketi daha önce tamamladınız.")
+        return redirect('home')
+    
+    if not completion.is_second_survey_due():
+        from django.utils import timezone
+        import datetime
+        
+        if completion.completed_at:
+            seven_days_later = completion.completed_at + datetime.timedelta(days=7)
+            days_left = (seven_days_later - timezone.now()).days
+            
+            if days_left > 0:
+                messages.info(request, f"Takip anketi için henüz {days_left} gün kaldı.")
+            else:
+                # Saatleri hesapla
+                hours_left = int((seven_days_later - timezone.now()).total_seconds() / 3600)
+                if hours_left > 0:
+                    messages.info(request, f"Takip anketi için henüz {hours_left} saat kaldı.")
+                else:
+                    messages.info(request, "Takip anketi yakında aktif olacak.")
+        
+        return redirect('home')
 
 @login_required(login_url='login')
 def second_survey_view(request):
@@ -220,14 +251,18 @@ def register_view(request):
             user = form.save(commit=False)
             user.username = generate_unique_numeric_username() 
             user.save()
-            assign_group_to_user(user)
+            
+            assign_group_to_user_sequentially(user)
+            
+            # Progress oluştur
             Progress.objects.create(user=user)
             
             # Anket tamamlama kaydı oluştur
             SurveyCompletion.objects.create(user=user, completed=False)
 
-            messages.success(request, f"Tebrikler! Kayıt tamamlandı. Kullanıcı ID'niz: {user.username}.\n"
-                                      "Lütfen not almayı unutmayın.")
+            messages.success(request, f"Tebrikler! Kullanıcı kaydınız oluşturulmuştur. Bundan sonra kullanıcı adınız {user.username} dir. "
+                                      f"Lütfen kullanıcı adınızı ve şifrenizi unutmamak için hemen bir kağıda not alın, "
+                                      f"bundan sonra bu kullanıcı adı ve belirlediğiniz şifre ile giriş yapabilirisiniz.")
 
             # Kullanıcıyı otomatik giriş yap ve ankete yönlendir
             login(request, user)
@@ -235,21 +270,23 @@ def register_view(request):
     else:
         form = RegisterForm()
     
-    # Bu satır eksikti, bu yüzden hata oluşuyordu
     return render(request, 'register.html', {'form': form})
 
 @login_required(login_url='login')  
 def home_view(request):
-    # İkinci anket hatırlatması
+    # İkinci anket hatırlatması kontrolü
     try:
         survey_completion = SurveyCompletion.objects.get(user=request.user)
         if survey_completion.completed and not survey_completion.second_survey_completed:
             if survey_completion.is_second_survey_due():
-                messages.info(request, "14 günlük takip anketi için zamanınız geldi. Lütfen ikinci anketi tamamlayın.")
+                messages.info(request, "Takip anketi için zamanınız geldi. Lütfen anketi tamamlayın.")
+                # Anket butonunu ekle
+                messages.info(request, '<a href="{% url "second_survey" %}" class="btn btn-success">Anketi Tamamla</a>', extra_tags='safe')
     except SurveyCompletion.DoesNotExist:
         pass
     
-    return render(request, 'home.html')
+    # Ana sayfaya yönlendir
+    return redirect('post_list')
 
 
 @login_required(login_url='login')  

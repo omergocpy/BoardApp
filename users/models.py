@@ -149,24 +149,12 @@ class Progress(models.Model):
         return f"Seviye {self.level} ({progress_in_level}/{points_needed_for_next_level})"
     
     def check_for_level_up(self):
-        if self.points >= 2000:
-            self.level = 10
-        elif self.points >= 1500:
-            self.level = 9
-        elif self.points >= 1000:
-            self.level = 8
-        elif self.points >= 800:
-            self.level = 7
-        elif self.points >= 650:
-            self.level = 6
-        elif self.points >= 500:
-            self.level = 5
-        elif self.points >= 400:
-            self.level = 4
-        elif self.points >= 250:
-            self.level = 3
-        elif self.points >= 100:
-            self.level = 2
+        for level, threshold in sorted(self.LEVEL_THRESHOLDS.items(), key=lambda x: x[0], reverse=True):
+            if self.points >= threshold:
+                if self.level != level:  # Seviye değiştiğinde log
+                    print(f"SEVİYE YÜKSELDİ: {self.user.username} - Seviye {self.level} -> {level}")
+                self.level = level
+                break
         self.save()
 
     def can_use_bold_text(self):
@@ -302,12 +290,12 @@ class SurveyCompletion(models.Model):
             return False
         
         if self.completed_at:
-            # 14 gün sonrası için kontrol
+            # 7 gün sonrası için kontrol (14 günden 7 güne değiştirildi)
             from django.utils import timezone
             import datetime
             
-            fourteen_days_later = self.completed_at + datetime.timedelta(days=14)
-            return timezone.now() >= fourteen_days_later
+            seven_days_later = self.completed_at + datetime.timedelta(days=7)
+            return timezone.now() >= seven_days_later
         
         return False
     
@@ -332,3 +320,45 @@ class Team(models.Model):
     def get_member_count(self):
         """Takımdaki üye sayısını döndürür"""
         return self.members.count()
+    
+    
+    
+class UserSession(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sessions', verbose_name="Kullanıcı")
+    login_time = models.DateTimeField(auto_now_add=True, verbose_name="Giriş Zamanı")
+    logout_time = models.DateTimeField(null=True, blank=True, verbose_name="Çıkış Zamanı")
+    session_key = models.CharField(max_length=40, verbose_name="Oturum Anahtarı")
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP Adresi")
+    user_agent = models.TextField(null=True, blank=True, verbose_name="Tarayıcı Bilgisi")
+    
+    class Meta:
+        verbose_name = "Kullanıcı Oturumu"
+        verbose_name_plural = "Kullanıcı Oturumları"
+        ordering = ['-login_time']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.login_time}"
+    
+    def duration(self):
+        """Oturum süresini hesapla"""
+        if self.logout_time:
+            return self.logout_time - self.login_time
+        return None
+    
+    def duration_seconds(self):
+        """Oturum süresini saniye cinsinden hesapla"""
+        dur = self.duration()
+        if dur:
+            return dur.total_seconds()
+        return None
+    
+    def duration_str(self):
+        """Oturum süresini okunabilir formatta göster"""
+        dur = self.duration()
+        if dur:
+            seconds = dur.total_seconds()
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            secs = int(seconds % 60)
+            return f"{hours}s {minutes}d {secs}sn"
+        return "Aktif"

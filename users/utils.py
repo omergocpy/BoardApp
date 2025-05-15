@@ -1,6 +1,59 @@
 from users.models import Progress
 from django.urls import reverse
 
+def assign_group_to_user_sequentially(user):
+    """
+    Kullanıcıları sırayla A-B-C-D-E-F gruplarına atar,
+    C, D ve F gruplarına atanan kullanıcıları otomatik olarak bir takıma atar
+    """
+    from users.models import Group, Team, CustomUser
+    
+    # Sırayla A-B-C-D-E-F gruplarını çek
+    groups = Group.objects.all().order_by('name')
+    
+    if not groups.exists():
+        return  # Eğer grup yoksa işlem yapma
+    
+    # Son kaydedilen kullanıcının grubunu bul
+    last_user = CustomUser.objects.exclude(id=user.id).exclude(group=None).order_by('-id').first()
+    
+    if last_user and last_user.group:
+        # Son kullanıcının grup indeksini bul
+        last_group_index = list(groups).index(last_user.group)
+        
+        # Bir sonraki grubu seç (döngüsel olarak)
+        next_group_index = (last_group_index + 1) % groups.count()
+        user.group = groups[next_group_index]
+    else:
+        # İlk kullanıcı için ilk grubu seç
+        user.group = groups.first()
+    
+    user.save()
+    
+    # Eğer C, D veya F grubuna atandıysa bir takıma ata
+    if user.group.name in ['C', 'D', 'F']:
+        assign_team_to_user(user)
+
+def assign_team_to_user(user):
+    """
+    Kullanıcıyı grubundaki bir takıma atar
+    """
+    from users.models import Team
+    
+    # Kullanıcının grubundaki takımları çek
+    teams = Team.objects.filter(group=user.group)
+    
+    if not teams.exists():
+        return  # Eğer takım yoksa işlem yapma
+    
+    # En az üyesi olan takımı bul
+    teams_with_counts = [(team, team.members.count()) for team in teams]
+    team_with_min_members = min(teams_with_counts, key=lambda x: x[1])[0]
+    
+    # Kullanıcıyı bu takıma ata
+    user.team = team_with_min_members
+    user.save()
+    
 def get_group_features(group_name):
     """Grup adına göre sahip olduğu özellikleri döndürür"""
     if not group_name:
@@ -27,7 +80,6 @@ def get_group_features(group_name):
         'is_team_based': False
     })
     
-    
 def update_user_points(user, points):
     progress, created = Progress.objects.get_or_create(user=user)
     progress.points += points
@@ -37,10 +89,20 @@ def update_user_points(user, points):
 
 def get_leaderboard_url(user):
     """Kullanıcının grubuna göre doğru leaderboard URL'sini döndürür"""
-    if user.group and user.group.name in ['C', 'D', 'F']:  
-        return reverse('team_leaderboard')
-    else:
+    if not user.group:
+        return None  # Grup yoksa leaderboard URL'si de yok
+        
+    # Grup A veya B ise normal leaderboard
+    if user.group.name in ['A', 'B']:
         return reverse('group_leaderboard')
+    
+    # Grup C, D veya F ise takım leaderboard
+    elif user.group.name in ['C', 'D', 'F']:
+        return reverse('team_leaderboard')
+    
+    # E grubu için leaderboard yok
+    else:
+        return None
     
 
 def get_user_ranking_info(user):

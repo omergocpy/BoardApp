@@ -6,19 +6,13 @@
 <div class="container mt-4">
     <h2>Grup Sıralaması</h2>
     
-    {% if user.group %}
+    {% if ranking_info %}
     <div class="alert alert-info">
-        <strong>Grup:</strong> {{ user.group.get_name_display }} - 
-        {% if ranking_info.is_team_based %}
-        <strong>Takımınız:</strong> {{ ranking_info.team_name }} - 
-        <strong>Takım Sıralaması:</strong> {{ ranking_info.rank }}. sırada
-        {% else %}
         <strong>Sıralamanız:</strong> 
         {% if ranking_info.rank %}
             {{ ranking_info.rank }}. sırada ({{ ranking_info.total_members }} üye arasında)
         {% else %}
             Sıralama bilgisi bulunamadı.
-        {% endif %}
         {% endif %}
     </div>
     {% endif %}

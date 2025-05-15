@@ -1,11 +1,10 @@
-# models.py dosyasını tamamen temizleyelim ve düzenleyelim
-# Tüm modelleri tek bir düzenli dosyada birleştirelim
-
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from notifications.utils import create_notification
+
 
 User = get_user_model()
 
@@ -113,6 +112,7 @@ class PollVote(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     option = models.ForeignKey(PollOption, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    points_added = models.BooleanField(default=False)  # Bu alanı ekleyin
 
     class Meta:
         unique_together = ('poll', 'user')
@@ -271,100 +271,154 @@ def update_post_points(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Comment)
 def update_comment_points(sender, instance, **kwargs):
-    """Yorum onaylandığında ve puan henüz eklenmemişse puan ekler"""
+    """Yorum onaylandığında puan ekler"""
     if instance.approved and not instance.points_added:
         try:
-            # Progress modelini import et
             from users.models import Progress
             
-            # Kullanıcının progress nesnesini al veya oluştur
-            progress, created = Progress.objects.get_or_create(user=instance.user)
+            # Yorum yapan kullanıcıya puan ekle
+            user_progress, created = Progress.objects.get_or_create(user=instance.user)
+            user_progress.points += 10  # Yorum yapan 10 puan alır
+            user_progress.check_for_level_up()
             
-            # Yorum için 5 puan ekle
-            progress.points += 5
-            progress.save()
+            # Gönderi sahibi farklı biriyse puan ekle
+            if instance.user.id != instance.post.user.id:
+                post_user_progress, created = Progress.objects.get_or_create(user=instance.post.user)
+                post_user_progress.points += 5  # Yorum alan kullanıcı 5 puan alır
+                post_user_progress.check_for_level_up()
             
             # Puanlar eklendi olarak işaretle
             instance.points_added = True
             Comment.objects.filter(id=instance.id).update(points_added=True)
             
-            print(f"YORUM PUAN EKLENDİ: {instance.user.username} - (+5)")
+            print(f"YORUM PUANI EKLENDİ: {instance.user.username} - (+10)")
+            if instance.user.id != instance.post.user.id:
+                print(f"GÖNDERİ SAHİBİ YORUM PUANI EKLENDİ: {instance.post.user.username} - (+5)")
+            
         except Exception as e:
             print(f"YORUM PUAN HATASI: {str(e)}")
-
-
+            import traceback
+            print(traceback.format_exc())
+            
 @receiver(post_save, sender=Like)
 def update_like_points(sender, instance, **kwargs):
-    """Beğeni onaylandığında ve puan henüz eklenmemişse puan ekler"""
-    print(f"LİKE SİGNAL ÇALIŞTI: Like ID={instance.id}, Approved={instance.approved}, Points_Added={instance.points_added}")
-    
+    """Beğeni onaylandığında puan ekler"""
     if instance.approved and not instance.points_added:
-        # Kendi gönderisini beğenmiyorsa puan ver
         try:
             from users.models import Progress
             
-            # Progress kaydı var mı kontrol et
-            try:
-                progress = Progress.objects.get(user=instance.user)
-                old_points = progress.points
+            # Beğenen kullanıcı için puan ekle
+            user_progress, created = Progress.objects.get_or_create(user=instance.user)
+            
+            # Her zaman beğeni için puan ekle (like veya dislike)
+            user_progress.points += 5
+            user_progress.check_for_level_up()
+            
+            # Gönderi sahibi farklı biriyse ve bu bir like ise, gönderi sahibine de puan ekle
+            if instance.user.id != instance.post.user.id and instance.like_type == 'like':
+                post_user_progress, created = Progress.objects.get_or_create(user=instance.post.user)
+                post_user_progress.points += 5  # Beğeni alan kullanıcı 5 puan kazanır
+                post_user_progress.check_for_level_up()
+            
+            # Puanlar eklendi olarak işaretle
+            instance.points_added = True
+            Like.objects.filter(id=instance.id).update(points_added=True)
+            
+            print(f"BEĞENİ PUANI EKLENDİ: {instance.user.username} - (+5)")
+            if instance.user.id != instance.post.user.id and instance.like_type == 'like':
+                print(f"GÖNDERİ SAHİBİ PUAN EKLENDİ: {instance.post.user.username} - (+5)")
                 
-                # Beğeni türüne göre güncelle
-                if instance.like_type == "like":
-                    progress.points += 10
-                else:
-                    progress.points -= 10
-                
-                # Progress kaydını kaydet
-                progress.save()
-                
-                # Beğeniyi işaretle
-                instance.points_added = True
-                Like.objects.filter(id=instance.id).update(points_added=True)
-                
-                print(f"BEĞENİ PUANI GÜNCELLENDİ: {instance.user.username}: {old_points} -> {progress.points}")
-                
-            except Progress.DoesNotExist:
-                # Kullanıcının progress kaydı yoksa oluştur
-                points = 10 if instance.like_type == "like" else -10
-                Progress.objects.create(user=instance.user, points=points, level=1)
-                
-                # Beğeniyi işaretle
-                instance.points_added = True
-                Like.objects.filter(id=instance.id).update(points_added=True)
-                
-                print(f"YENİ PROGRESS KAYDI OLUŞTURULDU: {instance.user.username} için {points} puan")
-        
         except Exception as e:
-            print(f"BEĞENİ HATASI: {str(e)}")
+            print(f"BEĞENİ PUAN HATASI: {str(e)}")
             import traceback
             print(traceback.format_exc())
-
-
-
+            
+            
 @receiver(post_save, sender=Rating)
 def update_rating_points(sender, instance, **kwargs):
-    """Derecelendirme onaylandığında ve puan henüz eklenmemişse puan ekler"""
+    """Derecelendirme onaylandığında puan ekler"""
     if instance.approved and not instance.points_added:
         try:
-            # Kendi gönderisini derecelendirmiyorsa puan ver
+            from users.models import Progress
+            
+            # Derecelendirme yapan kullanıcıya puan ekle
+            user_progress, created = Progress.objects.get_or_create(user=instance.user)
+            user_progress.points += 5  # Derecelendirme yapan her zaman 5 puan alır
+            user_progress.check_for_level_up()
+            
+            # Gönderi sahibi farklı biriyse, ona yıldız sayısı * 5 puan ekle
             if instance.user.id != instance.post.user.id:
-                # Progress modelini import et
-                from users.models import Progress
+                post_user_progress, created = Progress.objects.get_or_create(user=instance.post.user)
+                points_to_add = instance.score * 5  # 5 yıldız = 25 puan, 4 yıldız = 20 puan, vs.
+                post_user_progress.points += points_to_add
+                post_user_progress.check_for_level_up()
                 
-                # POST SAHİBİNİN progress nesnesini al veya oluştur
-                progress, created = Progress.objects.get_or_create(user=instance.post.user)
-                
-                # Puan miktarını hesapla
-                points_to_add = instance.score * 5
-                
-                # Puanları ekle
-                progress.points += points_to_add
-                progress.save()
-                
-                # Puanlar eklendi olarak işaretle
-                instance.points_added = True
-                Rating.objects.filter(id=instance.id).update(points_added=True)
-                
-                print(f"DERECELENDİRME PUAN EKLENDİ: {instance.post.user.username} - (+{points_to_add})")
+                print(f"DERECELENDİRME PUANI EKLENDİ: Derecelendiren: {instance.user.username} (+5), " 
+                      f"Gönderi Sahibi: {instance.post.user.username} (+{points_to_add})")
+            
+            # Puanlar eklendi olarak işaretle
+            instance.points_added = True
+            Rating.objects.filter(id=instance.id).update(points_added=True)
+            
         except Exception as e:
             print(f"DERECELENDİRME PUAN HATASI: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            
+            
+@receiver(post_save, sender=PollVote)            
+def update_poll_vote_points(sender, instance, **kwargs):
+    """Anket katılımında puan ekler"""
+    if not getattr(instance, 'points_added', False):
+        try:
+            from users.models import Progress
+            
+            # Ankete katılan kullanıcıya puan ekle
+            user_progress, created = Progress.objects.get_or_create(user=instance.user)
+            user_progress.points += 5  # Ankete katılan 5 puan alır
+            user_progress.check_for_level_up()
+            
+            # Anket sahibi farklı biriyse puan ekle
+            if instance.user.id != instance.poll.post.user.id:
+                poll_owner_progress, created = Progress.objects.get_or_create(user=instance.poll.post.user)
+                poll_owner_progress.points += 3  # Anket sahibi her katılım için 3 puan alır
+                poll_owner_progress.check_for_level_up()
+            
+            # Puanlar eklendi olarak işaretle
+            setattr(instance, 'points_added', True)
+            
+            print(f"ANKET KATILIM PUANI EKLENDİ: {instance.user.username} - (+5)")
+            if instance.user.id != instance.poll.post.user.id:
+                print(f"ANKET SAHİBİ PUAN EKLENDİ: {instance.poll.post.user.username} - (+3)")
+            
+        except Exception as e:
+            print(f"ANKET KATILIM PUAN HATASI: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            
+@receiver(post_save, sender=Like)
+def create_like_notification(sender, instance, created, **kwargs):
+    """Beğeni eklendiğinde bildirim gönder"""
+    if created and instance.user != instance.post.user:
+        notification_text = f"{instance.user.username} gönderinizi beğendi."
+        create_notification(
+            recipient=instance.post.user,
+            sender=instance.user,
+            notification_type='like',
+            text=notification_text,
+            post=instance.post
+        )
+
+@receiver(post_save, sender=Comment)
+def create_comment_notification(sender, instance, created, **kwargs):
+    """Yorum eklendiğinde bildirim gönder"""
+    if created and instance.user != instance.post.user:
+        notification_text = f"{instance.user.username} gönderinize yorum yaptı."
+        create_notification(
+            recipient=instance.post.user,
+            sender=instance.user,
+            notification_type='comment',
+            text=notification_text,
+            post=instance.post,
+            comment=instance
+        )

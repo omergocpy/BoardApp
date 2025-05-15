@@ -18,14 +18,23 @@ def team_leaderboard_view(request):
     user = request.user
     group = user.group
     
-    if not group.is_team_based():
+    # Eğer kullanıcı takım bazlı bir grupta değilse normal leaderboard'a yönlendir
+    if not group or not group.is_team_based():
         return redirect('group_leaderboard')
     
+    # Grup için takım sıralaması al
     team_leaderboard = group.get_teams_leaderboard()
     
+    # Kullanıcının takımını bul
     user_team = user.team
     
-    user_team_rank = next((item['rank'] for item in team_leaderboard if item['team'] == user_team), None)
+    # Kullanıcının takımının sıralamasını bul
+    user_team_rank = None
+    if user_team:
+        for item in team_leaderboard:
+            if item['team'] == user_team:
+                user_team_rank = item['rank']
+                break
     
     return render(request, 'team_leaderboard.html', {
         'team_leaderboard': team_leaderboard,

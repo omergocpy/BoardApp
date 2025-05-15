@@ -5,11 +5,11 @@
 {% block title %}Paylaşımlar{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-3">Gönderiler</h2>
-    <a href="{% url 'post_create' %}" class="btn btn-primary mb-4">Yeni Gönderi</a>
-    {% if messages %}
-    <div class="row">
+<h2 class="mb-3">Gönderiler</h2>
+<a href="{% url 'post_create' %}" class="btn btn-primary mb-4">Yeni Gönderi</a>
+{% if messages %}
+<div class="row">
+    <div class="col-12">
         <div class="messages">
             {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">       
@@ -21,37 +21,44 @@
             {% endfor %}
         </div>
     </div>
-    {% endif %}
-    {% for post in posts %}
-    <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between">
-            <div>
-                {% if post.user.team and post.user.group.name in 'CDF' %}
-                    <strong>{{ post.user.team.name }}</strong><br>
-                {% else %}
-                    <strong>{{ post.user.username }}</strong><br>
-                {% endif %}
-                <small class="text-muted">{{ post.created_at|date:"d M Y H:i" }}</small>
-            </div>
-            <div>
-                {% if post.post_type == 'poll' %}
-                    <span class="badge badge-warning">Anket</span>
-                {% elif post.post_type == 'photo' %}
-                    <span class="badge badge-info">Foto</span>
-                {% elif post.post_type == 'video' %}
-                    <span class="badge badge-danger">Video</span>
-                {% else %}
-                    <span class="badge badge-secondary">Metin</span>
-                {% endif %}
-            </div>
+</div>
+{% endif %}
+
+{% for post in posts %}
+<div class="card mb-3" data-post-id="{{ post.id }}">
+    <div class="card-header d-flex justify-content-between">
+        <div>
+            {% if post.user.team and post.user.group.name in 'CDF' %}
+                <strong>{{ post.user.team.name }}</strong><br>
+            {% else %}
+                <strong>{{ post.user.username }}</strong><br>
+            {% endif %}
+            <small class="text-muted">{{ post.created_at|date:"d M Y H:i" }}</small>
         </div>
-        <div class="card-body" style="
-            {% if post.is_bold %}font-weight: bold;{% endif %}
-            /* {% if post.text_color %}color: {{ post.text_color }};{% endif %} */
-            /* {% if post.bg_color %}background-color: {{ post.bg_color }};{% endif %} */
-        ">
-    <p>{{ post.content|truncatewords:30 }}</p>
-    {% if post.media %}
+        <div>
+            {% if post.post_type == 'poll' %}
+                <span class="badge badge-warning">Anket</span>
+            {% elif post.post_type == 'photo' %}
+                <span class="badge badge-info">Foto</span>
+            {% elif post.post_type == 'video' %}
+                <span class="badge badge-danger">Video</span>
+            {% else %}
+                <span class="badge badge-secondary">Metin</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body" style="
+        {% if post.is_bold %}font-weight: bold;{% endif %}
+        /* {% if post.text_color %}color: {{ post.text_color }};{% endif %} */
+        /* {% if post.bg_color %}background-color: {{ post.bg_color }};{% endif %} */
+    ">
+        <!-- Gönderi içeriğine tıklanabilir link ekle -->
+        <a href="{% url 'post_detail' post.id %}" class="text-dark text-decoration-none">
+            <p>{{ post.content|truncatewords:30 }}</p>
+        </a>
+        
+        {% if post.media %}
+            <a href="{% url 'post_detail' post.id %}">
                 {% if post.media.url|lower|endswith:".jpg" or post.media.url|endswith:".png" or post.media.url|endswith:".jpeg" %}
                     <img src="{{ post.media.url }}" alt="Görsel" class="img-fluid rounded">
                 {% elif post.media.url|endswith:".mp4" %}
@@ -60,32 +67,35 @@
                         Tarayıcınız bu videoyu desteklemiyor.
                     </video>
                 {% endif %}
-            {% endif %}
-            <hr>
-            <div class="d-flex justify-content-between">
-                <div class="post-actions">
-                    <button class="btn btn-sm like-button {% if post.user_liked %}btn-success{% else %}btn-outline-success{% endif %}" 
-                            data-post-id="{{ post.id }}" 
-                            data-action="like">
-                        <i class="fas fa-thumbs-up"></i> 
-                        <span class="like-count">{{ post.like_count }}</span>
-                    </button>
-                    
-                    <button class="btn btn-sm dislike-button {% if post.user_disliked %}btn-danger{% else %}btn-outline-danger{% endif %}" 
-                            data-post-id="{{ post.id }}" 
-                            data-action="dislike">
-                        <i class="fas fa-thumbs-down"></i> 
-                        <span class="dislike-count">{{ post.dislike_count }}</span>
-                    </button>
-                    
-                    <button class="btn btn-sm btn-info">
-                        <i class="fas fa-comments"></i> {{ post.comment_count }}
-                    </button>
-                </div>
+            </a>
+        {% endif %}
+        <hr>
+        
+        <div class="d-flex justify-content-between">
+            <div class="post-actions">
+                <button class="btn btn-sm like-button {% if post.user_liked %}btn-success{% else %}btn-outline-success{% endif %}" 
+                        data-post-id="{{ post.id }}" 
+                        data-action="like">
+                    <i class="fas fa-thumbs-up"></i> 
+                    <span class="like-count">{{ post.like_count }}</span>
+                </button>
                 
+                <button class="btn btn-sm dislike-button {% if post.user_disliked %}btn-danger{% else %}btn-outline-danger{% endif %}" 
+                        data-post-id="{{ post.id }}" 
+                        data-action="dislike">
+                    <i class="fas fa-thumbs-down"></i> 
+                    <span class="dislike-count">{{ post.dislike_count }}</span>
+                </button>
+                
+                <a href="{% url 'post_detail' post.id %}#comments" class="btn btn-sm btn-info">
+                    <i class="fas fa-comments"></i> {{ post.comment_count }}
+                </a>
             </div>
-            <hr>
-             {% if post.top_comments %}
+        </div>
+        
+        <hr>
+        
+        {% if post.top_comments %}
         <div class="comment-section mb-2">
             <h6>Yorumlar (ilk 3):</h6>
             {% for c in post.top_comments %}
@@ -97,23 +107,25 @@
             {% endfor %}
         </div>
         {% endif %}
-            <div class="d-flex justify-content-between">
-                <div>
-                    <i class="fas fa-comments"></i> {{ post.comment_count }} 
-                    <i class="fas fa-thumbs-up ml-3" style="color: #28a745;"></i> {{ post.like_count }}
-                    <i class="fas fa-thumbs-down ml-3" style="color: #dc3545;"></i> {{ post.dislike_count }}
-                    <i class="fas fa-star ml-3" style="color: #ffc107;"></i> {{ post.rating_percentage }}%
-                </div>
-                <a href="{% url 'post_detail' post.id %}" class="btn btn-sm btn-outline-primary">Detay</a>
+        
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                <i class="fas fa-star text-warning"></i> {{ post.rating_percentage }}%
             </div>
+            <!-- "Detay" yerine "Yorumlar" -->
+            <a href="{% url 'post_detail' post.id %}#comments" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-comments"></i> Yorumlar
+            </a>
         </div>
     </div>
-    {% empty %}
-    <p class="text-center text-muted">Henüz paylaşım yok.</p>
-    {% endfor %}
 </div>
+{% empty %}
+<p class="text-center text-muted">Henüz paylaşım yok.</p>
+{% endfor %}
 {% endblock %}
+
 {% block scripts %}
+{{ block.super }} <!-- Önemli: base.html'den gelen scriptleri dahil et -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const likeButtons = document.querySelectorAll('.like-button');
@@ -235,7 +247,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Bildirim gösterme
     function showNotification(message, type = 'success') {
-        const container = document.querySelector('.container');
         const notificationDiv = document.createElement('div');
         notificationDiv.className = `alert alert-${type} alert-dismissible fade show notification-alert`;
         notificationDiv.innerHTML = `
@@ -245,12 +256,8 @@ document.addEventListener('DOMContentLoaded', function() {
             </button>
         `;
         
-        // Notification'ı mevcut container'ın başına ekle
-        if (container) {
-            container.prepend(notificationDiv);
-        } else {
-            document.body.prepend(notificationDiv);
-        }
+        // Notification'ı body'nin üst kısmına ekle
+        document.body.insertBefore(notificationDiv, document.body.firstChild);
         
         // 5 saniye sonra otomatik kapat
         setTimeout(() => {
@@ -262,20 +269,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
-<style>
-.notification-alert {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1050;
-    max-width: 400px;
-    animation: fadeIn 0.5s;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-</style>
 {% endblock %}

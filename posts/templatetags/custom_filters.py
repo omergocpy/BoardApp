@@ -35,3 +35,12 @@ def get_item(dictionary, key):
     if dictionary is None:
         return None
     return dictionary.get(key)
+
+
+@register.filter
+def has_second_survey_due(user):
+    """Kullanıcının ikinci anket zamanı geldi mi kontrol eder"""
+    try:
+        return user.survey_completion.is_second_survey_due()
+    except:
+        return False

@@ -1,0 +1,151 @@
+
+
+{% block content %}
+<div class="container">
+    <div class="card shadow-sm border-0 rounded-lg">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h4 class="mb-0 font-weight-bold text-primary">
+                <i class="fas fa-bell mr-2"></i>Bildirimler
+            </h4>
+            {% if unread_count > 0 %}
+                <a href="{% url 'mark_all_read' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                    <i class="fas fa-check-double mr-1"></i>Tümünü Okundu İşaretle
+                </a>
+            {% endif %}
+        </div>
+        
+        <div class="card-body p-0">
+            {% if notifications %}
+                <div class="list-group list-group-flush">
+                    {% for notification in notifications %}
+                        <a href="{% if notification.post %}{% url 'post_detail' notification.post.id %}{% else %}#{% endif %}" 
+                           class="list-group-item list-group-item-action notification-item {% if not notification.is_read %}unread{% endif %}">
+                            <div class="d-flex align-items-center">
+                                <div class="notification-icon mr-3 {% if notification.notification_type == 'like' %}bg-primary{% elif notification.notification_type == 'comment' %}bg-success{% elif notification.notification_type == 'rating' %}bg-warning{% elif notification.notification_type == 'poll_vote' %}bg-info{% elif notification.notification_type == 'mention' %}bg-danger{% endif %}">
+                                    <i class="fas {% if notification.notification_type == 'like' %}fa-thumbs-up{% elif notification.notification_type == 'comment' %}fa-comment{% elif notification.notification_type == 'rating' %}fa-star{% elif notification.notification_type == 'poll_vote' %}fa-poll{% elif notification.notification_type == 'mention' %}fa-at{% endif %}"></i>
+                                </div>
+                                
+                                <div class="notification-content flex-grow-1">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 style="color:black;" class="mb-1 font-weight-bold">{{ notification.sender.username }}</h6>
+                                        <small class="text-muted notification-time">{{ notification.created_at|timesince }} önce</small>
+                                    </div>
+                                    <p class="mb-0 notification-text">{{ notification.text }}</p>
+                                </div>
+                                
+                                {% if not notification.is_read %}
+                                    <span class="badge badge-primary badge-dot ml-2"></span>
+                                {% endif %}
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="empty-state">
+                        <div class="empty-state-icon mb-3">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <h5 class="text-muted mb-2">Bildirim Bulunmuyor</h5>
+                        <p class="text-muted mb-0">Yeni bildirimleri burada görüntüleyebilirsiniz.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        {% if notifications %}
+            <div class="card-footer bg-white text-center py-3">
+                <small class="text-muted">Bildirimleriniz 30 gün boyunca saklanır.</small>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* Bildirim sayfası için özel stiller */
+    .notification-item {
+        padding: 1rem;
+        border-left: none;
+        border-right: none;
+        transition: all 0.2s ease;
+    }
+    
+    .notification-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .notification-item.unread {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    .notification-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        color: white;
+    }
+    
+    .notification-content {
+        line-height: 1.4;
+    }
+    
+    .notification-text {
+        color: #6c757d;
+    }
+    
+    .notification-time {
+        font-size: 0.75rem;
+    }
+    
+    .badge-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        padding: 0;
+    }
+    
+    .empty-state {
+        padding: 2rem;
+    }
+    
+    .empty-state-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 70px;
+        height: 70px;
+        font-size: 1.5rem;
+        color: #adb5bd;
+        background-color: #f8f9fa;
+        border-radius: 50%;
+    }
+    
+    /* Turuncu renk temasına uygun olarak */
+    .card-header {
+        border-bottom: 2px solid #ff6700;
+    }
+    
+    .text-primary {
+        color: #ff6700 !important;
+    }
+    
+    .bg-primary, .badge-primary {
+        background-color: #ff6700 !important;
+    }
+    
+    .btn-outline-primary {
+        color: #ff6700;
+        border-color: #ff6700;
+    }
+    
+    .btn-outline-primary:hover {
+        background-color: #ff6700;
+        border-color: #ff6700;
+        color: white;
+    }
+</style>
+{% endblock %}
