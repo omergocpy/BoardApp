@@ -53,7 +53,6 @@ def assign_team_to_user(user):
     # Kullanıcıyı bu takıma ata
     user.team = team_with_min_members
     user.save()
-    
 def get_group_features(group_name):
     """Grup adına göre sahip olduğu özellikleri döndürür"""
     if not group_name:
@@ -69,8 +68,8 @@ def get_group_features(group_name):
         'B': {'has_leaderboard': False, 'has_progress_bar': True, 'has_features': True, 'is_team_based': False},
         'C': {'has_leaderboard': True, 'has_progress_bar': False, 'has_features': True, 'is_team_based': True},
         'D': {'has_leaderboard': False, 'has_progress_bar': True, 'has_features': True, 'is_team_based': True},
-        'E': {'has_leaderboard': False, 'has_progress_bar': False, 'has_features': False, 'is_team_based': False},
-        'F': {'has_leaderboard': False, 'has_progress_bar': False, 'has_features': False, 'is_team_based': True}
+        'E': {'has_leaderboard': False, 'has_progress_bar': False, 'has_features': True, 'is_team_based': False}, 
+        'F': {'has_leaderboard': False, 'has_progress_bar': False, 'has_features': True, 'is_team_based': True}   
     }
     
     return features.get(group_name, {
@@ -79,7 +78,6 @@ def get_group_features(group_name):
         'has_features': False,
         'is_team_based': False
     })
-    
 def update_user_points(user, points):
     progress, created = Progress.objects.get_or_create(user=user)
     progress.points += points

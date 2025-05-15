@@ -288,11 +288,20 @@ def home_view(request):
     # Ana sayfaya yönlendir
     return redirect('post_list')
 
-
-@login_required(login_url='login')  
+@login_required(login_url='login')
 def profile_view(request):
     user = request.user
     progress = getattr(user, 'progress_instance', None)
+    
+    # Get group name
+    group_name = user.group.name if hasattr(user, 'group') and user.group else None
+    
+    # Get group features based on group name
+    group_features = get_group_features(group_name)
+    
+    # Override has_features for groups E and F - hide features
+    if group_name in ['E', 'F']:
+        group_features['has_features'] = False
     
     if progress is None:
         level = 1
@@ -303,7 +312,6 @@ def profile_view(request):
         group_level = 1
         user_ranking_in_group = "Yok"
         feature_details = []
-
     else:
         level = progress.level
         progress_percentage = progress.get_progress_percentage()
@@ -313,9 +321,9 @@ def profile_view(request):
         group_level = user.group.level
         user_ranking_in_group = Progress.objects.filter(user__group=user.group).order_by('-points').filter(points__gte=progress.points).count()
         feature_details = progress.get_feature_details()
-
+    
     ranking_info = get_user_ranking_info(user)
-
+    
     return render(request, 'profil.html', {
         'user': user,
         'level': level,
@@ -326,9 +334,10 @@ def profile_view(request):
         'group_level': group_level,
         'user_ranking_in_group': user_ranking_in_group,
         'ranking_info': ranking_info,
-        'feature_details': feature_details
+        'feature_details': feature_details,
+        'group_features': group_features,  # Pass group features to template
+        'group_name': group_name  # Pass group name to template
     })
-
 @login_required(login_url='login')  
 def post_add_view(request):
     if request.method == 'POST':

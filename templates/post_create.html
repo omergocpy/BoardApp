@@ -52,13 +52,37 @@
 
 <div class="form-container">
     <h2 class="mb-4 text-center">Yeni Gönderi Oluştur</h2>
-
+    {% if messages %}
+    <div class="row">
+        <div class="col-12">
+            <div class="messages">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">       
+                    {{ message }}
+                    {% if "takip anketi" in message.message|lower %}
+                        <a href="{% url 'second_survey' %}" class="btn btn-success ml-3">Takip Anketini Doldur</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if is_text_only_group %}
+    <!-- E ve F grubu için sadece metin seçeneği -->
+    <div class="post-type-options">
+        <div class="post-type-option active" id="pt-text" data-type="text">Metin</div>
+    </div>
+    {% else %}
+    <!-- Diğer gruplar için tüm seçenekler -->
     <div class="post-type-options">
         <div class="post-type-option" id="pt-text" data-type="text">Metin</div>
-        <div class="post-type-option {% if level < 3 %}disabled{% endif %}" id="pt-photo" data-type="photo">Fotoğraf</div>
-        <div class="post-type-option {% if level < 4 %}disabled{% endif %}" id="pt-video" data-type="video">Video</div>
-        <div class="post-type-option {% if level < 4 %}disabled{% endif %}" id="pt-poll" data-type="poll">Anket</div>
+        <div class="post-type-option {% if level < 6 %}disabled{% endif %}" id="pt-photo" data-type="photo">Fotoğraf</div>
+        <div class="post-type-option {% if level < 8 %}disabled{% endif %}" id="pt-video" data-type="video">Video</div>
+        <div class="post-type-option {% if level < 5 %}disabled{% endif %}" id="pt-poll" data-type="poll">Anket</div>
     </div>
+    {% endif %}
 
     <form method="post" enctype="multipart/form-data" id="postForm">
         {% csrf_token %}
@@ -72,6 +96,8 @@
             {{ form.content }}
         </div>
 
+        {% if not is_text_only_group %}
+        <!-- Metin format seçenekleri sadece diğer gruplar için -->
         <div class="form-group">
             <div class="form-check">
                 {{ form.is_bold }}
@@ -109,6 +135,12 @@
                 {{ form.option4 }}
             </div>
         </div>
+        {% else %}
+        <!-- E ve F grubu için bilgi mesajı -->
+        <div class="alert alert-info mt-3">
+            <small>Grubunuz sadece düz metin içeriği paylaşabilir.</small>
+        </div>
+        {% endif %}
 
         <button type="submit" class="btn btn-primary btn-block mt-4">Paylaş</button>
     </form>

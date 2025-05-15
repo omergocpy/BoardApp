@@ -34,20 +34,20 @@ def ajax_like_post_view(request):
                 message = 'Beğeniniz kaldırıldı.'
             else:
                 existing_like.like_type = like_type
-                existing_like.approved = False  # Otomatik onay
+                existing_like.approved = True  # Otomatik onay
                 existing_like.points_added = False  # Yeni puan eklenecek
                 existing_like.save()
                 action = 'changed'
-                message = 'Beğeni tipiniz değiştirildi. Moderatör Onayından Sonra Görüntülenecektir.'
+                message = 'Beğeni tipiniz değiştirildi.'
         else:
             Like.objects.create(
                 post=post, 
                 user=request.user, 
                 like_type=like_type,
-                approved=False  # Otomatik onay
+                approved=True  # Otomatik onay
             )
             action = 'added'
-            message = 'Beğeniniz kaydedildi. Moderatör Onayından Sonra Görüntülenecektir.'
+            message = 'Beğeniniz kaydedildi.'
         
         # Yeni beğeni sayılarını al
         like_count = post.likes.filter(like_type='like', approved=True).count()
@@ -104,56 +104,80 @@ def post_create_view(request):
         messages.warning(request, "Üzgünüz, içerik oluşturma özelliği grubunuz için kullanılamaz.")
         return redirect('home')
     
+    # E ve F grubu için sadece metin paylaşımı kısıtlaması
+    text_only_groups = ['E', 'F']
+    is_text_only_group = group_name in text_only_groups
+    
     if request.method == 'POST':
         form = PostForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            # Seviye kontrolü
+            # E ve F grubu kontrolü - sadece metin gönderisi oluşturabilirler
             post_type = form.cleaned_data.get('post_type')
             
-            # Kalın yazı için seviye 2 kontrolü
-            if form.cleaned_data.get('is_bold') and not progress.can_use_bold_text():
-                messages.error(request, "Kalın yazı kullanmak için seviye 2 gerekiyor.")
-                return redirect('post_create')
+            if is_text_only_group:
+                # E ve F grubu için metin dışında içerik kontrolü
+                if post_type != 'text':
+                    messages.error(request, "Grubunuz sadece metin paylaşımı yapabilir.")
+                    return redirect('post_create')
                 
-            # Renkli yazı için seviye 3 kontrolü
-            if form.cleaned_data.get('text_color') and not progress.can_use_colored_text():
-                messages.error(request, "Renkli yazı kullanmak için seviye 3 gerekiyor.")
-                return redirect('post_create')
+                # Metin formatlama kontrolü
+                if form.cleaned_data.get('is_bold') or form.cleaned_data.get('text_color') or form.cleaned_data.get('bg_color'):
+                    messages.error(request, "Grubunuz sadece düz metin paylaşımı yapabilir.")
+                    return redirect('post_create')
+            else:
+                # Diğer gruplar için seviye kontrolleri
+                # Kalın yazı için seviye 2 kontrolü
+                if form.cleaned_data.get('is_bold') and not progress.can_use_bold_text():
+                    messages.error(request, "Kalın yazı kullanmak için seviye 2 gerekiyor.")
+                    return redirect('post_create')
+                    
+                text_color = form.cleaned_data.get('text_color')
+                if text_color != "#000000":
+                    # bg_color boş değilse, seviye kontrolü yap
+                    if not progress.can_use_background():
+                        messages.error(request, "Renkli yazı kullanmak için seviye 3 gerekiyor.")
+                        return redirect('post_create')
+                    
+                bg_color = form.cleaned_data.get('bg_color')
+                if bg_color != "#000000":
+                    # bg_color boş değilse, seviye kontrolü yap
+                    if not progress.can_use_background():
+                        messages.error(request, "Arka plan rengi kullanmak için seviye 4 gerekiyor.")
+                        return redirect('post_create')
                 
-            # Arka plan rengi için seviye 4 kontrolü
-            if form.cleaned_data.get('bg_color') and not progress.can_use_background():
-                messages.error(request, "Arka plan rengi kullanmak için seviye 4 gerekiyor.")
-                return redirect('post_create')
-            
-            # Foto için seviye 6 kontrolü
-            if post_type == 'photo' and not progress.can_share_photo():
-                messages.error(request, "Fotoğraf paylaşmak için seviye 6 gerekiyor.")
-                return redirect('post_create')
-                
-            # Video için seviye 8 kontrolü
-            if post_type == 'video' and not progress.can_share_video():
-                messages.error(request, "Video paylaşmak için seviye 8 gerekiyor.")
-                return redirect('post_create')
-                
-            # Anket için seviye 5 kontrolü
-            if post_type == 'poll' and not progress.can_share_gif():
-                messages.error(request, "Anket oluşturmak için seviye 5 gerekiyor.")
-                return redirect('post_create')
+                # Foto için seviye 6 kontrolü
+                if post_type == 'photo' and not progress.can_share_photo():
+                    messages.error(request, "Fotoğraf paylaşmak için seviye 6 gerekiyor.")
+                    return redirect('post_create')
+                    
+                # Video için seviye 8 kontrolü
+                if post_type == 'video' and not progress.can_share_video():
+                    messages.error(request, "Video paylaşmak için seviye 8 gerekiyor.")
+                    return redirect('post_create')
+                    
+                # Anket için seviye 5 kontrolü
+                if post_type == 'poll' and not progress.can_share_gif():
+                    messages.error(request, "Anket oluşturmak için seviye 5 gerekiyor.")
+                    return redirect('post_create')
 
             post = form.save(commit=False)
             post.user = request.user
             post.approved = False  # Otomatik onay
             post.save()
             
-            messages.success(request, "Gönderiniz başarıyla oluşturuldu. Moderatör Onayından Sonra Görüntülenecektir.")
+            messages.success(request, "Gönderiniz başarıyla oluşturuldu.Moderatör Onayından Sonra Gözükecektir.")
             return redirect('post_list')
     else:
         form = PostForm(user=request.user)
-
-    return render(request, 'post_create.html', {
+    
+    context = {
         'form': form,
-        'level': progress.level
-    })
+        'level': progress.level,
+        'is_text_only_group': is_text_only_group
+    }
+
+    return render(request, 'post_create.html', context)
+    
 @login_required(login_url='login')
 def post_detail_view(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -202,7 +226,7 @@ def post_detail_view(request, post_id):
                 comment.user = request.user
                 comment.approved = False  # Otomatik onay
                 comment.save()
-                messages.success(request, "Yorumunuz kaydedildi. Moderatör Onayından Sonra Görüntülenecektir.")
+                messages.success(request, "Yorumunuz kaydedildi. Moderatör Onayladıktan Sonra Görüntülenecektir.")
                 return redirect('post_detail', post_id=post_id)
 
     return render(request, 'post_detail.html', {
@@ -288,15 +312,15 @@ def like_post_view(request, post_id):
             existing_like.approved = True  # Otomatik onay
             existing_like.points_added = False  # Yeni puan eklenecek
             existing_like.save()
-            messages.success(request, "Beğeniniz güncellendi. Moderatör Onayından Sonra Görüntülenecektir.")
+            messages.success(request, "Beğeniniz güncellendi.")
     else:
         Like.objects.create(
             post=post, 
             user=request.user, 
             like_type=like_type,
-            approved=False  # Otomatik onay
+            approved=True  # Otomatik onay
         )
-        messages.success(request, "Beğeniniz kaydedildi. Moderatör Onayından Sonra Görüntülenecektir.")
+        messages.success(request, "Beğeniniz kaydedildi.")
     
     return redirect('post_detail', post_id=post.id)
 
@@ -316,8 +340,8 @@ def rate_post_view(request, post_id):
 
     rating, created = Rating.objects.get_or_create(post=post, user=request.user)
     rating.score = score
-    rating.approved = True  
-    rating.points_added = False  
+    rating.approved = True  # Otomatik onay
+    rating.points_added = False  # Yeni puan hesaplanacak
     rating.save()
 
     messages.success(request, f"{score} yıldız verdiniz.")
@@ -333,9 +357,9 @@ def reply_comment_view(request, comment_id):
             user=request.user,
             content=request.POST.get('content'),
             parent=comment,
-            approved=True  # Otomatik onay
+            approved=False  # Otomatik onay
         )
-        messages.success(request, "Yanıtınız kaydedildi.")
+        messages.success(request, "Yanıtınız kaydedildi. Moderatör Onayladıktan Sonra Görüntülenecektir.")
         return redirect('post_detail', post_id=comment.post.id)
 
 
@@ -358,7 +382,7 @@ def dislike_comment_view(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id, approved=True)
     if request.user in comment.dislikes.all():
         comment.dislikes.remove(request.user)
-        messages.success(request, "Yorum beğenmemeniz kaldırıldı. Moderatör Onayından Sonra Görüntülenecektir.")
+        messages.success(request, "Yorum beğenmemeniz kaldırıldı.")
     else:
         if request.user in comment.likes.all():
             comment.likes.remove(request.user)
@@ -371,18 +395,17 @@ def dislike_comment_view(request, comment_id):
 def group_leaderboard_view(request):
     user = request.user
     user_group = user.group  
-    
-    # Takım bazlı gruplarda takım liderlik tablosuna yönlendir
-    if user_group and user_group.name in ['C', 'D', 'F']:
+
+    # Eğer kullanıcı takım tabanlı bir gruptaysa ve takımı varsa, takım liderlik panosuna yönlendirme
+    if user_group and user_group.is_team_based and user.team:
         return redirect('team_leaderboard')
-    
+
     from users.utils import get_user_ranking_info
     ranking_info = get_user_ranking_info(user)
-    
+
     from users.models import Progress
-    # Sadece aynı gruptaki kullanıcıları listele
     leaderboard = Progress.objects.filter(user__group=user_group).order_by('-points')
-    
+
     return render(request, 'group_leaderboard.html', {
         'leaderboard': leaderboard,
         'ranking_info': ranking_info  

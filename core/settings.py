@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-(^eqxpe@+hg+e9!@d8tanbdwg8z1xxc0nl0_)s#rh6jsv5pf24'
 
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["boardapp.net", "www.boardapp.net", "127.0.0.1", "localhost"]
 
@@ -16,8 +16,6 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = ['https://boardapp.net', 'http://127.0.0.1:8000']
-
-
 
 INSTALLED_APPS = [
     'jazzmin',
